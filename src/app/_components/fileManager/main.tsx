@@ -9,108 +9,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
   GridIcon,
   ListIcon,
-  MoreHorizontal,
-  Download,
-  Check,
-  FileText,
-  FileSpreadsheet,
-  File,
-  FileCode,
-  Archive,
-  ExternalLink,
-  Star,
-  Trash2,
   ArrowUpDown,
-  ChevronLeft,
-  ChevronRight,
-  ImageIcon,
-  CheckIcon,
-  FolderClosedIcon,
 } from "lucide-react";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import FilesList, { FileType } from "./dependencies/filesList";
 import Image from "next/image";
+import { useQuery } from "@tanstack/react-query";
+import axios from "axios";
 
-interface File {
-  id: number;
-  name: string;
-  type: string;
-  size: string;
-  isDownloaded: boolean;
-}
-
-function MoreButton({
-  file,
-  onDownload,
-  onDelete,
-}: {
-  file: File;
-  onDownload: () => void;
-  onDelete: () => void;
-}) {
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" className="h-8 w-8 p-0">
-          <MoreHorizontal className="h-4 w-4" />
-          <span className="sr-only">More options</span>
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="m-0 overflow-hidden">
-        <DropdownMenuItem onSelect={() => onDownload()}>
-          <Download className="mr-2 h-4 w-4" />
-          <span>{file.isDownloaded ? "Redownload" : "Download"}</span>
-        </DropdownMenuItem>
-        {file.isDownloaded && (
-          <DropdownMenuItem onSelect={() => onDelete()}>
-            <Trash2 className="mr-2 h-4 w-4" />
-            <span>Delete</span>
-          </DropdownMenuItem>
-        )}
-        <DropdownMenuItem onSelect={() => onDelete()}>
-          <CheckIcon className="mr-2 h-4 w-4" />
-          <span>Mark as completed</span>
-        </DropdownMenuItem>
-        <DropdownMenuItem>
-          <ExternalLink className="mr-2 h-4 w-4" />
-          <span>External Link</span>
-        </DropdownMenuItem>
-        <DropdownMenuItem>
-          <Star className="mr-2 h-4 w-4" />
-          <span>Mark as Favorite</span>
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-}
-
-function FileTypeIcon({ type }: { type: string }) {
-  switch (type) {
-    case "folder":
-      return <FolderClosedIcon className="h-4 w-4" />;
-    case "pdf":
-      return <FileText className="h-4 w-4" />;
-    case "image":
-      return <ImageIcon className="h-4 w-4" />;
-    case "spreadsheet":
-      return <FileSpreadsheet className="h-4 w-4" />;
-    case "presentation":
-      return <File className="h-4 w-4" />;
-    case "text":
-      return <FileCode className="h-4 w-4" />;
-    case "archive":
-      return <Archive className="h-4 w-4" />;
-    default:
-      return <FileText className="h-4 w-4" />;
-  }
-}
 
 export default function FileManager() {
   const [mode, setMode] = useState<"list" | "squares">("list");
@@ -120,8 +27,23 @@ export default function FileManager() {
     "all" | "downloaded" | "not-downloaded"
   >("all");
   const [searchTerm, setSearchTerm] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
-  const [files, setFiles] = useState<File[]>([
+ 
+  const { isLoading, data:fil } = useQuery({
+    queryKey: ["files"],
+    queryFn: async () => {
+      try {
+        const res = await axios.get(
+          "http://localhost:3000/api/drive?id=1akzOIDlH3IjZY-hDVyW5fb8Jwg12zdi0"
+        );
+        console.log(res.data);
+        return res.data;
+      } catch (error) {
+        console.log(error);
+        return error;
+      }
+    },
+  });
+  const [files, setFiles] = useState<FileType[]>([
     {
       id: 1,
       name: "Document.pdf",
@@ -250,21 +172,20 @@ export default function FileManager() {
     },
   ]);
 
-  const ITEMS_PER_PAGE = 8;
+  
+/*function formatFileSize(bytes) {
+  if (bytes === 0) return "0 Bytes";
 
+  const sizes = ["Bytes", "Ko", "Mo", "Go"]; // Labels for file sizes
+  const index = Math.floor(Math.log(bytes) / Math.log(1024));
+
+  return `${(bytes / Math.pow(1024, index)).toFixed(2)} ${sizes[index]}`;
+}*/
   const toggleMode = () => setMode(mode === "list" ? "squares" : "list");
 
-  const handleDownload = (id: number) => {
-    setFiles((prevFiles) =>
-      prevFiles.map((file) =>
-        file.id === id ? { ...file, isDownloaded: true } : file
-      )
-    );
-  };
+ 
 
-  const handleDelete = (id: number) => {
-    setFiles((prevFiles) => prevFiles.filter((file) => file.id !== id));
-  };
+  
 
   const toggleSort = () => {
     if (sortBy === "name") {
@@ -301,16 +222,15 @@ export default function FileManager() {
       .concat(finalArray.filter((file) => file.type != "folder"));
   }, [files, filterDownloaded, searchTerm, sortBy, sortOrder]);
 
-  const totalPages = Math.ceil(filteredAndSortedFiles.length / ITEMS_PER_PAGE);
-  const paginatedFiles = filteredAndSortedFiles.slice(
-    (currentPage - 1) * ITEMS_PER_PAGE,
-    currentPage *ITEMS_PER_PAGE
-  );
+ 
 
   return (
-    <div className="w-full overflow-hidden bg-white rounded-lg">
-      <div className="p-4 border-b">
-        <h1 className="text-3xl font-bold mb-4 flex gap-2 items-center">
+    <div
+      className="w-full overflow-hidden bg-white rounded-lg"
+      data-tauri-drag-region
+    >
+      <div className="p-4 pt-2 border-b" data-tauri-drag-region>
+        <h1 className="text-3xl font-bold mb-7 flex gap-2 items-center">
           <Image
             src="/googleDrive2.png"
             alt=""
@@ -320,7 +240,10 @@ export default function FileManager() {
           />
           Tresor Drive
         </h1>
-        <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
+        <div
+          className="flex flex-col sm:flex-row gap-4 items-center justify-between"
+          data-tauri-drag-region
+        >
           {/* Search and Sort */}
           <div className="flex items-center gap-2 w-full sm:w-auto">
             <Input
@@ -374,225 +297,7 @@ export default function FileManager() {
       </div>
 
       {/* File List */}
-      <div className={` ${mode == "squares" ? "" : "px-4 h-[384px]"}`}>
-        <div
-          className={` ${
-            mode === "squares"
-              ? "flex flex-col gap-4"
-              : "grid grid-cols-1 w-[675px]"
-          }`}
-        >
-          {mode == "squares" ? (
-            <ScrollArea
-              id="squares"
-              className=" h-[420px] w-[691px] pl-4 pr-6 border-b"
-            >
-              <div className={`grid my-4 grid-cols-2 gap-4 `}>
-                {filteredAndSortedFiles
-                  .filter((file) => file.type == "folder")
-                  .map((file) => (
-                    <div
-                      key={file.id}
-                      className={`p-2 border  border-gray-300 hover:bg-gray-100 cursor-pointer active:bg-gray-200 rounded-lg flex ${
-                        file.type === "folder"
-                          ? "items-center justify-between h-12" // Simplified for folders in squares mode
-                          : "flex-col items-center justify-between h-32" // Regular layout for files in squares mode
-                      } w-full bg-white `}
-                    >
-                      {/* File/Folder Icon and Name */}
-                      <div
-                        className={`flex ${
-                          file.type !== "folder"
-                            ? "flex-col items-center text-center"
-                            : "items-center"
-                        } overflow-hidden`}
-                      >
-                        <div
-                          className={`${
-                            file.type !== "folder" ? "mb-1" : "mr-3"
-                          } flex-shrink-0`}
-                        >
-                          <FileTypeIcon type={file.type} />
-                        </div>
-                        <div
-                          className={`${
-                            file.type !== "folder" ? "text-center" : ""
-                          } min-w-0 flex-1`}
-                        >
-                          <div
-                            className={`${
-                              file.type !== "folder" ? "text-sm" : "text-base"
-                            } font-medium truncate w-48`}
-                          >
-                            {file.name}
-                          </div>
-                          {file.type !== "folder" && (
-                            <div className="text-xs text-gray-500 mr-3 mt-1">
-                              {file.size}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* File/Folder Actions */}
-                      <div
-                        className={`flex items-center gap-3 ${
-                          file.type !== "folder" ? "mt-1" : ""
-                        }`}
-                      >
-                        {file.isDownloaded ? (
-                          <Check className="h-4 w-4 text-green-500" />
-                        ) : (
-                          <Download className="h-4 w-4 text-gray-500 " />
-                        )}
-                        <MoreButton
-                          file={file}
-                          onDownload={() => handleDownload(file.id)}
-                          onDelete={() => handleDelete(file.id)}
-                        />
-                      </div>
-                    </div>
-                  ))}
-              </div>
-              <div className={`grid  grid-cols-4 gap-4 pb-2`}>
-                {filteredAndSortedFiles
-                  .filter((file) => file.type != "folder")
-                  .map((file) => (
-                    <div
-                      key={file.id}
-                      className={`p-2 border border-gray-300 hover:bg-gray-100 cursor-pointer active:bg-gray-200 rounded-lg flex ${
-                        file.type === "folder"
-                          ? "items-center justify-between h-12" // Simplified for folders in squares mode
-                          : "flex-col items-center justify-between h-32" // Regular layout for files in squares mode
-                      } w-full bg-white `}
-                    >
-                      {/* File/Folder Icon and Name */}
-                      <div
-                        className={`flex ${
-                          file.type !== "folder"
-                            ? "flex-col items-center text-center"
-                            : "items-center"
-                        } overflow-hidden`}
-                      >
-                        <div
-                          className={`${
-                            file.type !== "folder" ? "mb-1" : "mr-3"
-                          } flex-shrink-0`}
-                        >
-                          <FileTypeIcon type={file.type} />
-                        </div>
-                        <div
-                          className={`${
-                            file.type !== "folder" ? "text-center" : ""
-                          } min-w-0 flex-1`}
-                        >
-                          <div
-                            className={`${
-                              file.type !== "folder" ? "text-sm" : "text-base"
-                            } font-medium truncate w-28`}
-                          >
-                            {file.name}
-                          </div>
-                          {file.type !== "folder" && (
-                            <div className="text-xs text-gray-500 mr-3 mt-1">
-                              {file.size}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* File/Folder Actions */}
-                      <div
-                        className={`flex items-center gap-3 ${
-                          file.type !== "folder" ? "mt-1" : ""
-                        }`}
-                      >
-                        {file.isDownloaded ? (
-                          <Check className="h-4 w-4 text-green-500" />
-                        ) : (
-                          <Download className="h-4 w-4 text-gray-500 " />
-                        )}
-                        <MoreButton
-                          file={file}
-                          onDownload={() => handleDownload(file.id)}
-                          onDelete={() => handleDelete(file.id)}
-                        />
-                      </div>
-                    </div>
-                  ))}
-              </div>
-            </ScrollArea>
-          ) : (
-            paginatedFiles.map((file, ind, array) => (
-              <div
-                key={file.id}
-                className={`p-2 border border-t-0 border-gray-300 hover:bg-gray-100 cursor-pointer active:bg-gray-200  flex items-center justify-between h-12  border-x-0  ${
-                  ind == array.length - 1 && "border-b-0"
-                }
-                    } w-full bg-white `}
-              >
-                {/* File/Folder Icon and Name */}
-                <div className={`flex items-center overflow-hidden`}>
-                  <div className={`mr-3 flex-shrink-0`}>
-                    <FileTypeIcon type={file.type} />
-                  </div>
-                  <div className={` min-w-0 flex-1`}>
-                    <div className={`text-base font-medium truncate w-96`}>
-                      {file.name}
-                    </div>
-                  </div>
-                </div>
-
-                {/* File/Folder Actions */}
-                <div className={`flex items-center gap-3 `}>
-                  <div className="text-xs text-gray-500 mr-3">{file.size}</div>
-
-                  {file.isDownloaded ? (
-                    <Check className="h-4 w-4 text-green-500" />
-                  ) : (
-                    <Download className="h-4 w-4 text-gray-500 " />
-                  )}
-                  <MoreButton
-                    file={file}
-                    onDownload={() => handleDownload(file.id)}
-                    onDelete={() => handleDelete(file.id)}
-                  />
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-      </div>
-
-      {mode == "list" && (
-        <div className="p-4 pt-0 border-t flex items-center justify-between">
-          <span className="text-sm pt-2">
-            Page {currentPage} of {totalPages}
-          </span>
-          <div className="flex gap-2">
-            <Button
-              onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-              disabled={currentPage === 1}
-              variant="outline"
-              size="icon"
-              className="h-8 w-8 mt-3 bg-gray-100 border rounded-md hover:bg-gray-200"
-            >
-              <ChevronLeft className="h-3 w-3" />
-            </Button>
-            <Button
-              onClick={() =>
-                setCurrentPage((prev) => Math.min(prev + 1, totalPages))
-              }
-              disabled={currentPage === totalPages}
-              variant="outline"
-              size="icon"
-              className="h-8 w-8 mt-3 bg-gray-100 border rounded-md hover:bg-gray-200"
-            >
-              <ChevronRight className="h-3 w-3" />
-            </Button>
-          </div>
-        </div>
-      )}
+      <FilesList filteredAndSortedFiles={filteredAndSortedFiles} setFiles={setFiles} mode={mode}/>
     </div>
   );
 }

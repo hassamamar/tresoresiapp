@@ -1,23 +1,7 @@
-import type { Metadata } from "next";
-import localFont from "next/font/local";
 import "./globals.css";
 import NavMenu from "./_components/navigationMenu/main";
-
-const geistSans = localFont({
-  src: "./fonts/GeistVF.woff",
-  variable: "--font-geist-sans",
-  weight: "100 900",
-});
-const geistMono = localFont({
-  src: "./fonts/GeistMonoVF.woff",
-  variable: "--font-geist-mono",
-  weight: "100 900",
-});
-
-export const metadata: Metadata = {
-  title: "Tresor App",
-  description: "Download manager for tresor esi",
-};
+import Decorations from "./decorations";
+import { AppProvider } from "./_context/appContext";
 
 export default function RootLayout({
   children,
@@ -27,10 +11,14 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased flex h-[600px] w-[900px] border border-zinc-200`}
+        className={`flex h-[600px] w-[900px] border border-zinc-200 bg-white`}
+        data-tauri-drag-region
       >
-        <NavMenu /><div className="px-3 py-6 overflow-hidden">{children}</div>
-        
+        <Decorations />
+        <NavMenu />
+        <div className="px-3 py-6 overflow-hidden" data-tauri-drag-region>
+          <AppProvider> {children}</AppProvider>
+        </div>
       </body>
     </html>
   );

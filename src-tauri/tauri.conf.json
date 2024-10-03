@@ -12,11 +12,13 @@
   "app": {
     "windows": [
       {
-        "title": "tresoresiapp",
-        "width": 800,
+        "fullscreen": false,
+        "decorations": false,
         "height": 600,
-        "resizable": true,
-        "fullscreen": false
+        "resizable": false,
+        "title": "Tresor Esi App",
+        "width": 900,
+        "transparent": true
       }
     ],
     "security": {
@@ -27,9 +29,6 @@
     "active": true,
     "targets": "all",
     "icon": [
-      "icons/32x32.png",
-      "icons/128x128.png",
-      "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
     ]

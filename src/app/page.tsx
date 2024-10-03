@@ -1,8 +1,7 @@
-"use client"
-import FileManager from "./_components/fileManager/main";
+"use client";
+
 
 export default function Home() {
-  return (
-    <FileManager/>
-  );
+  
+  return <div >dashboard</div>;
 }
