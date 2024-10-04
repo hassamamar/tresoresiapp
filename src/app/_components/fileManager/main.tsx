@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useReducer, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -8,16 +8,55 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  GridIcon,
-  ListIcon,
-  ArrowUpDown,
-} from "lucide-react";
-import FilesList, { FileType } from "./dependencies/filesList";
+import { GridIcon, ListIcon, ArrowUpDown } from "lucide-react";
+import FilesList from "./dependencies/filesList";
 import Image from "next/image";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
+import {
+  BreadcrumbFiles,
+  FileType,
+  LoadingComponent,
+} from "./dependencies/more";
 
+// Define the action type with appropriate payloads for each action
+export type Action =
+  | { type: "push"; payload: { id: string; name: string } }
+  | { type: "goto"; payload: number };
+
+// Define the state structure
+interface State {
+  list: { id: string; name: string }[];
+  id: string;
+}
+
+// Define the initial state
+const initialState: State = {
+  list: [{ id: "1akzOIDlH3IjZY-hDVyW5fb8Jwg12zdi0", name: "Tresor Esi" }],
+  id: "1akzOIDlH3IjZY-hDVyW5fb8Jwg12zdi0",
+};
+
+// Define the reducer function
+const reducer = (state: State, action: Action): State => {
+  switch (action.type) {
+    case "push":
+      return {
+        list: [...state.list, action.payload], // Add the new item (object) to the list
+        id: action.payload.id, // Update id to the payload's id
+      };
+    case "goto": {
+      const item = state.list[action.payload];
+      if (item)
+        return {
+          list: state.list.slice(0, action.payload + 1),
+          id: item.id, // Change id to the new payload string
+        };
+      else return state;
+    }
+    default:
+      return state;
+  }
+};
 
 export default function FileManager() {
   const [mode, setMode] = useState<"list" | "squares">("list");
@@ -27,14 +66,17 @@ export default function FileManager() {
     "all" | "downloaded" | "not-downloaded"
   >("all");
   const [searchTerm, setSearchTerm] = useState("");
- 
-  const { isLoading, data:fil } = useQuery({
-    queryKey: ["files"],
+
+  const [idState, idDispatch] = useReducer(reducer, initialState);
+  const { isLoading,data } = useQuery({
+    queryKey: [idState.id],
+    staleTime:Infinity,
     queryFn: async () => {
       try {
-        const res = await axios.get(
-          "http://localhost:3000/api/drive?id=1akzOIDlH3IjZY-hDVyW5fb8Jwg12zdi0"
-        );
+        
+        const res = await axios.get(`http://localhost:3000/api/drive`, {
+          params: { id: idState.id }
+        });
         console.log(res.data);
         return res.data;
       } catch (error) {
@@ -43,150 +85,10 @@ export default function FileManager() {
       }
     },
   });
-  const [files, setFiles] = useState<FileType[]>([
-    {
-      id: 1,
-      name: "Document.pdf",
-      type: "pdf",
-      size: "2.5 MB",
-      isDownloaded: true,
-    },
-    {
-      id: 2,
-      name: "Image.jpg",
-      type: "image",
-      size: "3.2 MB",
-      isDownloaded: false,
-    },
-    {
-      id: 3,
-      name: "Spreadsheet.xlsx",
-      type: "spreadsheet",
-      size: "1.8 MB",
-      isDownloaded: true,
-    },
-    {
-      id: 4,
-      name: "Presentation.pptx",
-      type: "presentation",
-      size: "5.7 MB",
-      isDownloaded: false,
-    },
-    {
-      id: 5,
-      name: "Notes.txt",
-      type: "text",
-      size: "12 KB",
-      isDownloaded: true,
-    },
-    {
-      id: 6,
-      name: "Archive.zip",
-      type: "archive",
-      size: "10.1 MB",
-      isDownloaded: false,
-    },
-    {
-      id: 7,
-      name: "Report.docx",
-      type: "pdf",
-      size: "1.5 MB",
-      isDownloaded: true,
-    },
-    {
-      id: 8,
-      name: "Logooooerh ethoet eth oe.png",
-      type: "folder",
-      size: "0.8 MB",
-      isDownloaded: true,
-    },
-    {
-      id: 9,
-      name: "Budget.xlsx",
-      type: "spreadsheet",
-      size: "2.2 MB",
-      isDownloaded: false,
-    },
-    {
-      id: 10,
-      name: "Proposal",
-      type: "folder",
-      size: "4.3 MB",
-      isDownloaded: true,
-    },
-    {
-      id: 11,
-      name: "Spreadsheet.xlsx",
-      type: "spreadsheet",
-      size: "1.8 MB",
-      isDownloaded: true,
-    },
-    {
-      id: 12,
-      name: "Presentation.pptx",
-      type: "presentation",
-      size: "5.7 MB",
-      isDownloaded: false,
-    },
-    {
-      id: 13,
-      name: "Notes.txt",
-      type: "text",
-      size: "12 KB",
-      isDownloaded: true,
-    },
-    {
-      id: 14,
-      name: "Archive.zip",
-      type: "archive",
-      size: "10.1 MB",
-      isDownloaded: false,
-    },
-    {
-      id: 15,
-      name: "Report.docx",
-      type: "pdf",
-      size: "1.5 MB",
-      isDownloaded: true,
-    },
-    {
-      id: 16,
-      name: "Logooooerh ethoet eth oe.png",
-      type: "folder",
-      size: "0.8 MB",
-      isDownloaded: true,
-    },
-    {
-      id: 17,
-      name: "Budget.xlsx",
-      type: "spreadsheet",
-      size: "2.2 MB",
-      isDownloaded: false,
-    },
-    {
-      id: 18,
-      name: "Proposal",
-      type: "folder",
-      size: "4.3 MB",
-      isDownloaded: true,
-    },
-  ]);
+  const [files, setFiles] = useState<FileType[]>([]);
 
-  
-/*function formatFileSize(bytes) {
-  if (bytes === 0) return "0 Bytes";
-
-  const sizes = ["Bytes", "Ko", "Mo", "Go"]; // Labels for file sizes
-  const index = Math.floor(Math.log(bytes) / Math.log(1024));
-
-  return `${(bytes / Math.pow(1024, index)).toFixed(2)} ${sizes[index]}`;
-}*/
   const toggleMode = () => setMode(mode === "list" ? "squares" : "list");
-
- 
-
-  
-
+useEffect(()=>setFiles(data|| []),[data])
   const toggleSort = () => {
     if (sortBy === "name") {
       setSortBy("size");
@@ -212,24 +114,32 @@ export default function FileManager() {
             ? a.name.localeCompare(b.name)
             : b.name.localeCompare(a.name);
         } else {
-          const sizeA = parseFloat(a.size);
-          const sizeB = parseFloat(b.size);
+          const sizeA = a.size;
+          const sizeB = b.size;
           return sortOrder === "asc" ? sizeA - sizeB : sizeB - sizeA;
         }
       });
     return finalArray
-      .filter((file) => file.type == "folder")
-      .concat(finalArray.filter((file) => file.type != "folder"));
+      .filter(
+        (file) =>
+          file.mimeType == "application/vnd.google-apps.folder" ||
+          file.mimeType == "application/vnd.google-apps.shortcut"
+      )
+      .concat(
+        finalArray.filter(
+          (file) =>
+            file.mimeType != "application/vnd.google-apps.folder" &&
+            file.mimeType != "application/vnd.google-apps.shortcut"
+        )
+      );
   }, [files, filterDownloaded, searchTerm, sortBy, sortOrder]);
-
- 
 
   return (
     <div
       className="w-full overflow-hidden bg-white rounded-lg"
       data-tauri-drag-region
     >
-      <div className="p-4 pt-2 border-b" data-tauri-drag-region>
+      <div className="p-4 pt-2 " data-tauri-drag-region>
         <h1 className="text-3xl font-bold mb-7 flex gap-2 items-center">
           <Image
             src="/googleDrive2.png"
@@ -295,9 +205,21 @@ export default function FileManager() {
           </div>
         </div>
       </div>
-
+      <BreadcrumbFiles list={idState.list} idDispatch={idDispatch} />
       {/* File List */}
-      <FilesList filteredAndSortedFiles={filteredAndSortedFiles} setFiles={setFiles} mode={mode}/>
+      {isLoading ? (
+        <div className="w-[675px] h-[380px] flex items-center justify-center flex-col gap-3 border-t">
+          <LoadingComponent />
+          <span className="font-semibold">Looking for files...</span>
+        </div>
+      ) : (
+        <FilesList
+          filteredAndSortedFiles={filteredAndSortedFiles}
+          setFiles={setFiles}
+          mode={mode}
+          idDispatch={idDispatch}
+        />
+      )}
     </div>
   );
 }

@@ -13,7 +13,7 @@ export async function GET(request:NextRequest) {
   try {
     const response = await driveService.files.list({
       q: `'${id}' in parents and trashed = false`, // Filter for files in the specific folder
-      fields: "files(id, name, mimeType,size, webContentLink)",
+      fields: "files(id, name, mimeType,size, webContentLink,shortcutDetails)",
     });
 
     return new Response(JSON.stringify(response.data.files), {

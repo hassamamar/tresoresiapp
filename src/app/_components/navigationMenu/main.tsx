@@ -16,7 +16,13 @@ export default function NavMenu() {
             onClick={async () => await open("https://tresor.cse.club/")}
             className="flex items-center w-full px-3 mt-6 mb-8 gap-3 "
           >
-            <Image src="/logoTxt.webp" alt="logo" width={110} height={90} />
+            <Image
+              src="/logoTxt.webp"
+              alt="logo"
+              width={110}
+              height={90}
+              className="selectDisable"
+            />
           </div>
           <div className="flex flex-col items-center w-full  border-gray-300">
             <MenuItem linkPath="/" icon={<HouseIcon />} label="Dashboard" />
@@ -49,8 +55,14 @@ export default function NavMenu() {
           className="flex flex-col items-center cursor-pointer gap-3 opacity-80 z-10 "
           onClick={async () => await open("https://www.cse.club/")}
         >
-          <Image src="/logo.png" alt="logo" width={50} height={50} />
-          <p className="font-bold text-sm font-sans">CSE Club</p>
+          <Image
+            src="/logo.png"
+            alt="logo"
+            width={50}
+            height={50}
+            className="selectDisable"
+          />
+          <p className="font-bold text-sm font-sans selectDisable">CSE Club</p>
         </div>
         {/* Background Image */}
         <Image
@@ -58,7 +70,7 @@ export default function NavMenu() {
           alt="logo"
           width={1}
           height={1}
-          className="absolute inset-0 object-cover z-0 scale-150 transform opacity-10 w-full h-full"
+          className="absolute selectDisable inset-0 object-cover z-0 scale-150 transform opacity-10 w-full h-full"
         />
       </div>
     </>
@@ -66,15 +78,15 @@ export default function NavMenu() {
 }
 const MenuItem = ({ linkPath, icon, label }:{linkPath:string,icon:ReactNode,label:string}) => {
   const path = usePathname();
-  const getMenuItemClass = (linkPath:string) =>
-    `flex items-center w-full h-12 px-3 mt-2 rounded ${
+  const getMenuItemClass = (linkPath: string) =>
+    `flex items-center w-full h-12 px-3 mt-2 rounded selectDisable ${
       path === linkPath ? "bg-gray-300" : "hover:bg-gray-300"
     }`;
 
   return (
     <Link className={getMenuItemClass(linkPath)} href={linkPath}>
       {icon}
-      <span className="ml-2 text-sm font-medium">{label}</span>
+      <span className="ml-2 text-sm font-medium selectDisable">{label}</span>
     </Link>
   );
 };
