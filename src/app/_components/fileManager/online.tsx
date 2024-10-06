@@ -1,23 +1,14 @@
+"use client"
 import { useReducer } from "react";
 
 import Image from "next/image";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
-import FileManager from "./FileManager";
+import FileManager, { IdStateType, OnlineAction } from "./FileManager";
 import { Button } from "@/components/ui/button";
 import { HardDriveIcon } from "lucide-react";
 import Link from "next/link";
 
-// Define the action type with appropriate payloads for each action
-export type OnlineAction =
-  | { type: "push"; payload: { id: string; name: string } }
-  | { type: "goto"; payload: number };
-
-// Define the state structure
-export interface IdStateType {
-  list: { id: string; name: string }[];
-  id: string;
-}
 
 // Define the initial state
 const initialState: IdStateType = {
@@ -57,10 +48,8 @@ export default function TresorDrive() {
         const res = await axios.get(`http://localhost:3000/api/drive`, {
           params: { id: idState.id },
         });
-        console.log(res.data);
         return res.data;
       } catch (error) {
-        console.log(error);
         return error;
       }
     },

@@ -4,10 +4,25 @@ import { CloudUploadIcon, HouseIcon, LibraryBigIcon } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ReactNode, useState } from "react";
-import axios from "axios";
-
+import { ReactNode } from "react";
+import { DownloadPopover } from "./dependencies/download-popover";
+const downloads = [
+  {
+    id: "1",
+    name: "Very long file name that needs truncation.pdf",
+    percentage: 45,
+    path: "/documents/work/",
+  },
+  {
+    id: "2",
+    name: "Another long named file for download example.docx",
+    percentage: 78,
+    path: "/downloads/",
+  },
+  { id: "3", name: "Short name.txt", percentage: 100, path: "/notes/" },
+];
 export default function NavMenu() {
+
   return (
     <>
       <div className="relative flex flex-col justify-between items-center w-40 text-gray-700 bg-white overflow-hidden border-r pb-10">
@@ -50,7 +65,7 @@ export default function NavMenu() {
               label="Share"
             />
           </div>
-          <DownloadProgress />
+          <DownloadPopover />
         </div>
         <div
           className="flex flex-col items-center cursor-pointer gap-3 opacity-80 z-10 "
@@ -110,42 +125,3 @@ const MenuItem = ({
     </Link>
   );
 };
-
-function DownloadProgress() {
-  const [progress, setProgress] = useState(0);
-  const [isDownloading, setIsDownloading] = useState(false);
-  const fileId = "1UMKV89uJOoSoD6wmBMX-huB4wrc66Auo";
-  const handleDownload = async () => {
-    setIsDownloading(true);
-    setProgress(0);
-
-    try {
-      const response = await axios.get(`https://drive.google.com/uc`, {
-        params: { export: "download", id: fileId },
-        withCredentials:true
-      });
-      console.log(response.data);
-      setIsDownloading(false);
-    } catch (error) {
-      console.error("Error downloading file:", error);
-      setIsDownloading(false);
-      // Handle error (you might want to set an error state)
-    } finally {
-      // Reset download state
-    }
-  };
-
-  return (
-    <div>
-      <button onClick={handleDownload} disabled={isDownloading}>
-        {isDownloading ? "Downloading..." : "Download File"}
-      </button>
-      {isDownloading && (
-        <div>
-          <div>Progress: {progress}%</div>
-          <progress value={progress} max="100" />
-        </div>
-      )}
-    </div>
-  );
-}

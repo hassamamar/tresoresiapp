@@ -3,19 +3,22 @@ import { Button } from "@/components/ui/button";
 import { Download, Check, ChevronLeft, ChevronRight } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
+  FileType,
   FileTypeIcon,
   formatFileSize,
+  isFile,
   isFolder,
   isFolderShortcut,
   MoreButton,
 } from "./more";
-import { Dispatch, SetStateAction, useState } from "react";
+import { Dispatch, SetStateAction, useContext, useState } from "react";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { OnlineAction } from "../online";
+import { IdStateType, OnlineAction } from "../FileManager";
+import { AppContext } from "@/app/_context/appContext";
 
 const ITEMS_PER_PAGE = 7;
 export default function FilesList({
@@ -23,12 +26,15 @@ export default function FilesList({
   filteredAndSortedFiles,
   setFiles,
   idDispatch,
+  idState,
 }: {
   mode: "squares" | "list";
   filteredAndSortedFiles: any[];
   setFiles: Dispatch<SetStateAction<any[]>>;
   idDispatch: Dispatch<OnlineAction>;
+  idState: IdStateType;
 }) {
+  const context = useContext(AppContext);
   const [currentPage, setCurrentPage] = useState(1);
   const handleDelete = (id: string) => {
     setFiles((prevFiles) =>
@@ -37,12 +43,13 @@ export default function FilesList({
       )
     );
   };
-  const handleDownload = (id: string) => {
-    setFiles((prevFiles) =>
-      prevFiles.map((file) =>
-        file.id === id ? { ...file, isDownloaded: true } : file
-      )
-    );
+  const handleDownload = (file: FileType, path: string[]) => {
+    context?.appActions.download({
+      id: file.id,
+      name: file.name,
+      progress: 0,
+      path,
+    });
   };
   const totalPages = Math.ceil(filteredAndSortedFiles.length / ITEMS_PER_PAGE);
   const paginatedFiles = filteredAndSortedFiles.slice(
@@ -68,9 +75,9 @@ export default function FilesList({
                 {filteredAndSortedFiles
                   .filter((file) => isFolder(file) || isFolderShortcut(file))
                   .map((file) => (
-                    <Button
+                    <div
                       key={file.id}
-                      className={`p-2 border  border-gray-300 focus:bg-[#C2E7FF] hover:bg-gray-100 rounded-lg flex items-center justify-between h-12 w-full bg-white `}
+                      className={`p-2 border shadow-sm cursor-pointer  border-gray-300 focus:bg-[#C2E7FF] hover:bg-gray-100 rounded-lg flex items-center justify-between h-12 w-full bg-white `}
                       onDoubleClick={() =>
                         file.shortcutDetails
                           ? idDispatch({
@@ -120,19 +127,24 @@ export default function FilesList({
                           <Download className="h-4 w-4 text-gray-500 " />
                         )}
                         <MoreButton
-                          files={[file]}
-                          onDownload={() => handleDownload(file.id)}
+                          file={file}
+                          onDownload={() =>
+                            handleDownload(
+                              file,
+                              idState.list.map(({ name }) => name)
+                            )
+                          }
                           onDelete={() => handleDelete(file.id)}
                         />
                       </div>
-                    </Button>
+                    </div>
                   ))}
               </div>
               <div className={`grid  grid-cols-4 gap-4 pb-2`}>
                 {filteredAndSortedFiles
                   .filter((file) => !isFolder(file) && !isFolderShortcut(file))
                   .map((file) => (
-                    <Button
+                    <div
                       key={file.id}
                       className={`p-2 border focus:bg-[#C2E7FF] border-gray-300 hover:bg-gray-100 rounded-lg flex   flex-col items-center justify-between h-32 w-full bg-white `}
                     >
@@ -173,18 +185,23 @@ export default function FilesList({
                           <Download className="h-4 w-4 text-gray-500 " />
                         )}
                         <MoreButton
-                          files={[file]}
-                          onDownload={() => handleDownload(file.id)}
+                          file={file}
+                          onDownload={() =>
+                            handleDownload(
+                              file,
+                              idState.list.map(({ name }) => name)
+                            )
+                          }
                           onDelete={() => handleDelete(file.id)}
                         />
                       </div>
-                    </Button>
+                    </div>
                   ))}
               </div>
             </ScrollArea>
           ) : (
             paginatedFiles.map((file, ind, array) => (
-              <Button
+              <div
                 key={file.id}
                 className={`p-2 rounded-none shadow-none border border-t-0 border-gray-300 focus:bg-[#C2E7FF] hover:bg-gray-100  flex items-center justify-between h-12  border-x-0  ${
                   ind == array.length - 1 && "border-b-0"
@@ -241,19 +258,28 @@ export default function FilesList({
                       {formatFileSize(file.size)}
                     </div>
                   )}
-
-                  {file.isDownloaded ? (
-                    <Check className="h-4 w-4 text-green-500" />
-                  ) : (
-                    <Download className="h-4 w-4 text-gray-500 " />
+                  {isFile(file) && (
+                    <>
+                      {file.isDownloaded ? (
+                        <Check className="h-4 w-4 text-green-500" />
+                      ) : (
+                        <Download className="h-4 w-4 text-gray-500 " />
+                      )}
+                    </>
                   )}
+
                   <MoreButton
-                    files={[file]}
-                    onDownload={() => handleDownload(file.id)}
+                    file={file}
+                    onDownload={() =>
+                      handleDownload(
+                        file,
+                        idState.list.map(({ name }) => name)
+                      )
+                    }
                     onDelete={() => handleDelete(file.id)}
                   />
                 </div>
-              </Button>
+              </div>
             ))
           )}
         </div>

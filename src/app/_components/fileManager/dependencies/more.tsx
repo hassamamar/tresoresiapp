@@ -1,4 +1,3 @@
-import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,12 +13,10 @@ import {
   FileCode,
   Archive,
   ExternalLink,
-  Star,
   Trash2,
   ImageIcon,
   FolderClosedIcon,
   CopyPlusIcon,
-  BringToFrontIcon,
 } from "lucide-react";
 import {
   Breadcrumb,
@@ -27,9 +24,9 @@ import {
   BreadcrumbList,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-import { Dispatch } from "react";
+import React, { Dispatch } from "react";
 import { open } from "@tauri-apps/plugin-shell";
-import { OnlineAction } from "../online";
+import { OnlineAction } from "../FileManager";
 
 export interface FileType {
   id: string;
@@ -56,63 +53,48 @@ export function isFileType(obj: FileType): boolean {
   );
 }
 export function MoreButton({
-  files,
+  file,
   onDownload,
   onDelete,
 }: {
-  files: FileType[];
+  file: FileType;
   onDownload: () => void;
   onDelete: () => void;
 }) {
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          className={` ${
-            files.length == 1
-              ? "h-8 w-8 hover:bg-white"
-              : "h-10 w-24 hover:bg-gray-300 bg-gray-100 flex items-center gap-2"
-          } p-0  cursor-pointer`}
-        >
-          {files.length == 1 ? (
-            <MoreHorizontal className="h-4 w-4 text-black" />
-          ) : (
-            <>
-              <BringToFrontIcon  width={13}/> Actions
-            </>
-          )}
-        </Button>
+      <DropdownMenuTrigger
+        className={`h-8 w-8 hover:bg-white p-0 flex items-center justify-center rounded-lg cursor-pointer`}
+      >
+        <MoreHorizontal className="h-4 w-4 text-black" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="m-0 overflow-hidden">
-        <DropdownMenuItem onSelect={() => onDownload()}>
-          <Download className="mr-2 h-4 w-4" />
-          <span>
-            {files.some((file) => file.isDownloaded)
-              ? "Redownload"
-              : "Download"}
-          </span>
-        </DropdownMenuItem>
-        {files.some((file) => !file.isDownloaded) && (
-          <DropdownMenuItem onSelect={() => onDelete()}>
-            <Trash2 className="mr-2 h-4 w-4" />
-            <span>Delete</span>
+        {isFile(file) && (
+          <DropdownMenuItem
+            onSelect={() => {
+              console.log("donwloading");
+              onDownload();
+            }}
+          >
+            <Download className="mr-2 h-4 w-4" />
+            <span>{file.isDownloaded ? "Redownload" : "Download"}</span>
           </DropdownMenuItem>
         )}
-        <DropdownMenuItem onSelect={() => onDelete()}>
+        {!file.isDownloaded &&
+          isFile(file) &&(
+            <DropdownMenuItem onSelect={() => onDelete()}>
+              <Trash2 className="mr-2 h-4 w-4" />
+              <span>Delete</span>
+            </DropdownMenuItem>
+          )}
+        {isFile(file) && <DropdownMenuItem>
           <CopyPlusIcon className="mr-2 h-4 w-4" />
           <span>Add to library</span>
-        </DropdownMenuItem>
-        {files.length == 1 && (
-          <DropdownMenuItem onClick={() => open(GetExternalLink(files[0]))}>
-            <ExternalLink className="mr-2 h-4 w-4" />
-            <span>External Link</span>
-          </DropdownMenuItem>
-        )}
-        <DropdownMenuItem>
-          <Star className="mr-2 h-4 w-4" />
-          <span>Mark as Favorite</span>
+        </DropdownMenuItem>}
+
+        <DropdownMenuItem onClick={() => open(GetExternalLink(file))}>
+          <ExternalLink className="mr-2 h-4 w-4" />
+          <span>External Link</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
@@ -131,10 +113,7 @@ export function isShortcut(file: FileType) {
   return file.mimeType == "application/vnd.google-apps.shortcut";
 }
 export function isFile(file: FileType) {
-  return (
-    file.mimeType != "application/vnd.google-apps.shortcut" &&
-    file.mimeType != "application/vnd.google-apps.folder"
-  );
+  return !isFolder(file) && !isFolderShortcut(file);
 }
 
 function GetExternalLink(file: FileType) {
@@ -239,6 +218,7 @@ export function BreadcrumbFiles({
         {list.length > 3 && (
           <>
             <BreadcrumbItem
+              key="..."
               id={list[list.length - 3].id}
               onClick={() =>
                 idDispatch({ type: "goto", payload: list.length - 3 })
@@ -247,12 +227,14 @@ export function BreadcrumbFiles({
             >
               ..
             </BreadcrumbItem>
-            <BreadcrumbSeparator />
+            <BreadcrumbSeparator key="sep..." />
           </>
         )}
         {list.length > 3
           ? list.slice(-2).map((folder, ind, arr) => (
-              <>
+              <React.Fragment key={folder.id}>
+                {" "}
+                {/* Use folder.id as key */}
                 <BreadcrumbItem
                   id={folder.id}
                   onClick={() =>
@@ -263,11 +245,15 @@ export function BreadcrumbFiles({
                 >
                   {folder.name}
                 </BreadcrumbItem>
-                {ind != arr.length - 1 && <BreadcrumbSeparator />}
-              </>
+                {ind != arr.length - 1 && (
+                  <BreadcrumbSeparator key={`sep-${folder.id}`} />
+                )}
+              </React.Fragment>
             ))
           : list.map((folder, ind, arr) => (
-              <>
+              <React.Fragment key={folder.id}>
+                {" "}
+                {/* Use folder.id as key */}
                 <BreadcrumbItem
                   id={folder.id}
                   onClick={() =>
@@ -278,8 +264,10 @@ export function BreadcrumbFiles({
                 >
                   {folder.name}
                 </BreadcrumbItem>
-                {ind != arr.length - 1 && <BreadcrumbSeparator />}
-              </>
+                {ind != arr.length - 1 && (
+                  <BreadcrumbSeparator key={`sep-${folder.id}`} />
+                )}
+              </React.Fragment>
             ))}
       </BreadcrumbList>
     </Breadcrumb>

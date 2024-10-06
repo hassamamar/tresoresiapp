@@ -21,7 +21,7 @@ export default function DownloadFile() {
     setProgress(0); // Reset progress before starting download
     try {
       const message = await invoke("download_file", {
-        fileId: "1rCWr0-XltblY4_NdgNL-z_bE-MrNk96H",
+        fileId: "1uwYITSp-NQCK4z4e54oGhqiiv_p50sBn",
       });
       console.log(message);
     } catch (error) {

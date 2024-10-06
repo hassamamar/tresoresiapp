@@ -18,7 +18,6 @@ import {
   LoadingComponent,
 } from "./dependencies/more";
 import { FileLib, FullFileLib } from "./dependencies/FileSystem";
-import { OnlineAction, IdStateType } from "./online";
 interface FileManagerProps {
   idState: IdStateType;
   idDispatch: Dispatch<OnlineAction>;
@@ -27,6 +26,15 @@ interface FileManagerProps {
   isToggle: boolean;
   data: (FileType & FileLib & FullFileLib)[];
   isLoading: boolean;
+}
+export type OnlineAction =
+  | { type: "push"; payload: { id: string; name: string } }
+  | { type: "goto"; payload: number };
+
+// Define the state structure
+export interface IdStateType {
+  list: { id: string; name: string }[];
+  id: string;
 }
 export default function FileManager({
   idState,
@@ -173,6 +181,7 @@ export default function FileManager({
           filteredAndSortedFiles={filteredAndSortedFiles}
           setFiles={setFiles}
           mode={mode}
+          idState={idState}
           idDispatch={idDispatch}
         />
       )}
