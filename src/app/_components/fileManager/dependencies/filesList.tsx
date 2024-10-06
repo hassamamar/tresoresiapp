@@ -1,14 +1,21 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Button } from "@/components/ui/button";
 import { Download, Check, ChevronLeft, ChevronRight } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { FileType, FileTypeIcon, formatFileSize, MoreButton } from "./more";
+import {
+  FileTypeIcon,
+  formatFileSize,
+  isFolder,
+  isFolderShortcut,
+  MoreButton,
+} from "./more";
 import { Dispatch, SetStateAction, useState } from "react";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Action } from "../main";
+import { OnlineAction } from "../online";
 
 const ITEMS_PER_PAGE = 7;
 export default function FilesList({
@@ -18,9 +25,9 @@ export default function FilesList({
   idDispatch,
 }: {
   mode: "squares" | "list";
-  filteredAndSortedFiles: FileType[];
-  setFiles: Dispatch<SetStateAction<FileType[]>>;
-  idDispatch: Dispatch<Action>;
+  filteredAndSortedFiles: any[];
+  setFiles: Dispatch<SetStateAction<any[]>>;
+  idDispatch: Dispatch<OnlineAction>;
 }) {
   const [currentPage, setCurrentPage] = useState(1);
   const handleDelete = (id: string) => {
@@ -59,12 +66,7 @@ export default function FilesList({
             >
               <div className={`grid my-4 grid-cols-2 gap-4 `}>
                 {filteredAndSortedFiles
-                  .filter(
-                    (file) =>
-                      file.mimeType == "application/vnd.google-apps.folder" ||
-                      file.shortcutDetails?.targetMimeType ==
-                        "application/vnd.google-apps.folder"
-                  )
+                  .filter((file) => isFolder(file) || isFolderShortcut(file))
                   .map((file) => (
                     <Button
                       key={file.id}
@@ -101,7 +103,7 @@ export default function FilesList({
                         <div className={` min-w-0 flex-1`}>
                           <Tooltip>
                             <TooltipTrigger className="text-black   text-base font-medium ">
-                              <span className="flex items-start truncate w-48">
+                              <span className="flex items-start truncate w-48 ">
                                 {file.name}
                               </span>
                             </TooltipTrigger>
@@ -118,7 +120,7 @@ export default function FilesList({
                           <Download className="h-4 w-4 text-gray-500 " />
                         )}
                         <MoreButton
-                          file={file}
+                          files={[file]}
                           onDownload={() => handleDownload(file.id)}
                           onDelete={() => handleDelete(file.id)}
                         />
@@ -128,12 +130,7 @@ export default function FilesList({
               </div>
               <div className={`grid  grid-cols-4 gap-4 pb-2`}>
                 {filteredAndSortedFiles
-                  .filter(
-                    (file) =>
-                      file.mimeType != "application/vnd.google-apps.folder" &&
-                      file.shortcutDetails?.targetMimeType !=
-                        "application/vnd.google-apps.folder"
-                  )
+                  .filter((file) => !isFolder(file) && !isFolderShortcut(file))
                   .map((file) => (
                     <Button
                       key={file.id}
@@ -143,7 +140,7 @@ export default function FilesList({
                       <div
                         className={`flex flex-col items-center text-center overflow-hidden`}
                       >
-                        <div className={` mb-1 flex-shrink-0`}>
+                        <div className={` mb-1 flex-shrink-0 text-black`}>
                           <FileTypeIcon
                             type={
                               file.shortcutDetails
@@ -154,8 +151,8 @@ export default function FilesList({
                         </div>
                         <div className={`text-center min-w-0 flex-1`}>
                           <Tooltip>
-                            <TooltipTrigger className="   text-sm font-medium ">
-                              <span className="truncate w-48 flex items-start">
+                            <TooltipTrigger className="text-sm font-medium">
+                              <span className="inline-block truncate w-32  overflow-hidden text-black">
                                 {file.name}
                               </span>
                             </TooltipTrigger>
@@ -176,7 +173,7 @@ export default function FilesList({
                           <Download className="h-4 w-4 text-gray-500 " />
                         )}
                         <MoreButton
-                          file={file}
+                          files={[file]}
                           onDownload={() => handleDownload(file.id)}
                           onDelete={() => handleDelete(file.id)}
                         />
@@ -194,11 +191,7 @@ export default function FilesList({
                 }
                     } w-full bg-white `}
                 onDoubleClick={() => {
-                  if (
-                    file.mimeType == "application/vnd.google-apps.folder" ||
-                    file.shortcutDetails?.targetMimeType ==
-                      "application/vnd.google-apps.folder"
-                  )
+                  if (isFolder(file) || isFolderShortcut(file))
                     if (file.shortcutDetails)
                       idDispatch({
                         type: "push",
@@ -228,13 +221,14 @@ export default function FilesList({
                       }
                     />
                   </div>
-                  <div className="flex-1">
+                  <div className="flex-1 flex items-start justify-start">
                     <Tooltip>
-                      <TooltipTrigger className="text-black text-base font-medium overflow-hidden ">
-                        <span className="flex items-start truncate w-48">
+                      <TooltipTrigger className="text-sm font-medium">
+                        <span className="inline-block truncate w-96  overflow-hidden text-black text-left">
                           {file.name}
                         </span>
                       </TooltipTrigger>
+
                       <TooltipContent>{file.name}</TooltipContent>
                     </Tooltip>
                   </div>
@@ -242,13 +236,11 @@ export default function FilesList({
 
                 {/* File/Folder Actions */}
                 <div className={`flex items-center gap-3 `}>
-                  {file.mimeType != "application/vnd.google-apps.folder" &&
-                    file.shortcutDetails?.targetMimeType !=
-                      "application/vnd.google-apps.folder" && (
-                      <div className="text-xs text-gray-500 mr-3">
-                        {formatFileSize(file.size)}
-                      </div>
-                    )}
+                  {!isFolder(file) && !isFolderShortcut(file) && (
+                    <div className="text-xs text-gray-500 mr-3">
+                      {formatFileSize(file.size)}
+                    </div>
+                  )}
 
                   {file.isDownloaded ? (
                     <Check className="h-4 w-4 text-green-500" />
@@ -256,7 +248,7 @@ export default function FilesList({
                     <Download className="h-4 w-4 text-gray-500 " />
                   )}
                   <MoreButton
-                    file={file}
+                    files={[file]}
                     onDownload={() => handleDownload(file.id)}
                     onDelete={() => handleDelete(file.id)}
                   />

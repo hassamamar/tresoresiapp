@@ -1,11 +1,11 @@
 "use client";
 import { open } from "@tauri-apps/plugin-shell";
 import { CloudUploadIcon, HouseIcon, LibraryBigIcon } from "lucide-react";
-
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ReactNode } from "react";
+import { ReactNode, useState } from "react";
+import axios from "axios";
 
 export default function NavMenu() {
   return (
@@ -50,6 +50,7 @@ export default function NavMenu() {
               label="Share"
             />
           </div>
+          <DownloadProgress />
         </div>
         <div
           className="flex flex-col items-center cursor-pointer gap-3 opacity-80 z-10 "
@@ -76,17 +77,75 @@ export default function NavMenu() {
     </>
   );
 }
-const MenuItem = ({ linkPath, icon, label }:{linkPath:string,icon:ReactNode,label:string}) => {
+const MenuItem = ({
+  linkPath,
+  icon,
+  label,
+}: {
+  linkPath: string;
+  icon: ReactNode;
+  label: string;
+}) => {
   const path = usePathname();
   const getMenuItemClass = (linkPath: string) =>
     `flex items-center w-full h-12 px-3 mt-2 rounded selectDisable ${
-      path === linkPath ? "bg-gray-300" : "hover:bg-gray-300"
+      (linkPath == "/drive" && path.includes(linkPath)) || path == linkPath
+        ? "bg-gray-300"
+        : "hover:bg-gray-300"
     }`;
 
   return (
-    <Link className={getMenuItemClass(linkPath)} href={linkPath}>
+    <Link
+      className={getMenuItemClass(linkPath)}
+      href={
+        linkPath == "/drive"
+          ? path.includes("/drive")
+            ? "#"
+            : "/drive/online"
+          : linkPath
+      }
+    >
       {icon}
       <span className="ml-2 text-sm font-medium selectDisable">{label}</span>
     </Link>
   );
 };
+
+function DownloadProgress() {
+  const [progress, setProgress] = useState(0);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const fileId = "1UMKV89uJOoSoD6wmBMX-huB4wrc66Auo";
+  const handleDownload = async () => {
+    setIsDownloading(true);
+    setProgress(0);
+
+    try {
+      const response = await axios.get(`https://drive.google.com/uc`, {
+        params: { export: "download", id: fileId },
+        withCredentials:true
+      });
+      console.log(response.data);
+      setIsDownloading(false);
+    } catch (error) {
+      console.error("Error downloading file:", error);
+      setIsDownloading(false);
+      // Handle error (you might want to set an error state)
+    } finally {
+      // Reset download state
+    }
+  };
+
+  return (
+    <div>
+      <button onClick={handleDownload} disabled={isDownloading}>
+        {isDownloading ? "Downloading..." : "Download File"}
+      </button>
+      {isDownloading && (
+        <div>
+          <div>Progress: {progress}%</div>
+          <progress value={progress} max="100" />
+        </div>
+      )}
+    </div>
+  );
+}

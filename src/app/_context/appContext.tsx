@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, createContext, ReactNode, FC } from "react";
+import { useState, createContext, ReactNode, FC, SetStateAction, Dispatch } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { TooltipProvider } from "@/components/ui/tooltip";
 interface AppState {
@@ -8,7 +8,7 @@ interface AppState {
 }
 export interface AppContextProps {
   appState: AppState;
-  setAppState: {};
+  setAppState: Dispatch<SetStateAction<AppState>>;
 }
 const AppContext = createContext<AppContextProps | undefined>(undefined);
 

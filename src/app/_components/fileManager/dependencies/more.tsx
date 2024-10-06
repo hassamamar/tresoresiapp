@@ -17,8 +17,9 @@ import {
   Star,
   Trash2,
   ImageIcon,
-  CheckIcon,
   FolderClosedIcon,
+  CopyPlusIcon,
+  BringToFrontIcon,
 } from "lucide-react";
 import {
   Breadcrumb,
@@ -27,7 +28,8 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { Dispatch } from "react";
-import { Action } from "../main";
+import { open } from "@tauri-apps/plugin-shell";
+import { OnlineAction } from "../online";
 
 export interface FileType {
   id: string;
@@ -40,13 +42,25 @@ export interface FileType {
     targetMimeType: string;
   };
 }
-
+export function isFileType(obj: FileType): boolean {
+  return (
+    typeof obj.id === "string" &&
+    typeof obj.name === "string" &&
+    typeof obj.mimeType === "string" &&
+    typeof obj.size === "number" &&
+    (obj.isDownloaded === undefined || typeof obj.isDownloaded === "boolean") &&
+    (obj.shortcutDetails === undefined ||
+      (typeof obj.shortcutDetails === "object" &&
+        typeof obj.shortcutDetails.targetId === "string" &&
+        typeof obj.shortcutDetails.targetMimeType === "string"))
+  );
+}
 export function MoreButton({
-  file,
+  files,
   onDownload,
   onDelete,
 }: {
-  file: FileType;
+  files: FileType[];
   onDownload: () => void;
   onDelete: () => void;
 }) {
@@ -56,30 +70,46 @@ export function MoreButton({
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8 p-0 hover:bg-white cursor-pointer"
+          className={` ${
+            files.length == 1
+              ? "h-8 w-8 hover:bg-white"
+              : "h-10 w-24 hover:bg-gray-300 bg-gray-100 flex items-center gap-2"
+          } p-0  cursor-pointer`}
         >
-          <MoreHorizontal className="h-4 w-4 text-black" />
+          {files.length == 1 ? (
+            <MoreHorizontal className="h-4 w-4 text-black" />
+          ) : (
+            <>
+              <BringToFrontIcon  width={13}/> Actions
+            </>
+          )}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="m-0 overflow-hidden">
         <DropdownMenuItem onSelect={() => onDownload()}>
           <Download className="mr-2 h-4 w-4" />
-          <span>{file.isDownloaded ? "Redownload" : "Download"}</span>
+          <span>
+            {files.some((file) => file.isDownloaded)
+              ? "Redownload"
+              : "Download"}
+          </span>
         </DropdownMenuItem>
-        {file.isDownloaded && (
+        {files.some((file) => !file.isDownloaded) && (
           <DropdownMenuItem onSelect={() => onDelete()}>
             <Trash2 className="mr-2 h-4 w-4" />
             <span>Delete</span>
           </DropdownMenuItem>
         )}
         <DropdownMenuItem onSelect={() => onDelete()}>
-          <CheckIcon className="mr-2 h-4 w-4" />
-          <span>Mark as completed</span>
+          <CopyPlusIcon className="mr-2 h-4 w-4" />
+          <span>Add to library</span>
         </DropdownMenuItem>
-        <DropdownMenuItem>
-          <ExternalLink className="mr-2 h-4 w-4" />
-          <span>External Link</span>
-        </DropdownMenuItem>
+        {files.length == 1 && (
+          <DropdownMenuItem onClick={() => open(GetExternalLink(files[0]))}>
+            <ExternalLink className="mr-2 h-4 w-4" />
+            <span>External Link</span>
+          </DropdownMenuItem>
+        )}
         <DropdownMenuItem>
           <Star className="mr-2 h-4 w-4" />
           <span>Mark as Favorite</span>
@@ -87,6 +117,36 @@ export function MoreButton({
       </DropdownMenuContent>
     </DropdownMenu>
   );
+}
+
+export function isFolder(file: FileType) {
+  return file.mimeType == "application/vnd.google-apps.folder";
+}
+export function isFolderShortcut(file: FileType) {
+  return (
+    file.shortcutDetails?.targetMimeType == "application/vnd.google-apps.folder"
+  );
+}
+export function isShortcut(file: FileType) {
+  return file.mimeType == "application/vnd.google-apps.shortcut";
+}
+export function isFile(file: FileType) {
+  return (
+    file.mimeType != "application/vnd.google-apps.shortcut" &&
+    file.mimeType != "application/vnd.google-apps.folder"
+  );
+}
+
+function GetExternalLink(file: FileType) {
+  switch (file.mimeType) {
+    case "application/vnd.google-apps.folder":
+      return `https://drive.google.com/drive/folders/${file.id}`;
+    case "application/vnd.google-apps.shortcut":
+      return `https://drive.google.com/drive/folders/${file.shortcutDetails?.targetId}`;
+
+    default:
+      return `https://drive.google.com/file/d/${file.id}`;
+  }
 }
 
 interface FileTypeIconProps {
@@ -171,7 +231,7 @@ export function BreadcrumbFiles({
   idDispatch,
 }: {
   list: { id: string; name: string }[];
-  idDispatch: Dispatch<Action>;
+  idDispatch: Dispatch<OnlineAction>;
 }) {
   return (
     <Breadcrumb>
@@ -197,7 +257,7 @@ export function BreadcrumbFiles({
                   id={folder.id}
                   onClick={() =>
                     ind != arr.length - 1 &&
-                    idDispatch({ type: "goto", payload: ind +2})
+                    idDispatch({ type: "goto", payload: ind + 2 })
                   }
                   className="selectDisable hover:text-black cursor-pointer"
                 >

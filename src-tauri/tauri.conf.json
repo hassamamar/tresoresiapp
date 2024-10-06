@@ -2,6 +2,7 @@
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "tresoresiapp",
   "version": "0.1.0",
+  "plugins": {"fs":{}},
   "identifier": "com.tauri.dev",
   "build": {
     "frontendDist": "../out",
