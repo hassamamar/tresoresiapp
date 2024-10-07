@@ -11,14 +11,16 @@ import {
   isFolderShortcut,
   MoreButton,
 } from "./more";
-import { Dispatch, SetStateAction, useContext, useState } from "react";
+import React, { Dispatch, SetStateAction, useContext, useState } from "react";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { IdStateType, OnlineAction } from "../FileManager";
+import { OnlineIdStateType, OnlineAction } from "../FileManager";
 import { AppContext } from "@/app/_context/appContext";
+import { invoke } from "@tauri-apps/api/core";
+import { QueryClient } from "@tanstack/react-query";
 
 const ITEMS_PER_PAGE = 7;
 export default function FilesList({
@@ -27,22 +29,49 @@ export default function FilesList({
   setFiles,
   idDispatch,
   idState,
+  queryClient,
 }: {
   mode: "squares" | "list";
   filteredAndSortedFiles: any[];
   setFiles: Dispatch<SetStateAction<any[]>>;
   idDispatch: Dispatch<OnlineAction>;
-  idState: IdStateType;
+  idState: OnlineIdStateType;
+  queryClient: QueryClient;
 }) {
   const context = useContext(AppContext);
   const [currentPage, setCurrentPage] = useState(1);
-  const handleDelete = (id: string) => {
-    setFiles((prevFiles) =>
-      prevFiles.map((file) =>
-        file.id === id ? { ...file, isDownloaded: false } : file
-      )
-    );
+  const handleDelete = async (file: {
+    id?: string;
+    name: string;
+    path: string[];
+    mimeType: string;
+  }) => {
+    if (file.id) {
+      setFiles((prevFiles) =>
+        prevFiles.map((mapFile) =>
+          mapFile.name === file.name
+            ? { ...file, isDownloaded: false }
+            : mapFile
+        )
+      );
+    } else {
+      setFiles((prevFiles) =>
+        prevFiles.filter((mapFile) => mapFile.name !== file.name)
+      );
+    }
+    console.log(file);
+    queryClient.removeQueries({ queryKey: [...file.path], exact: true });
+    if (isFile(file)) {
+      await invoke("delete_file", {
+        file: { name: file.name, path: file.path },
+      });
+    } else {
+      await invoke("delete_folder", {
+        path: file.path.concat(file.name),
+      });
+    }
   };
+
   const handleDownload = (file: FileType, path: string[]) => {
     context?.appActions.download({
       id: file.id,
@@ -66,6 +95,11 @@ export default function FilesList({
               : "grid grid-cols-1 w-[675px]"
           }`}
         >
+          {filteredAndSortedFiles.length == 0 && (
+            <h1 className="flex items-center justify-center w-full mt-20">
+              Nothing found
+            </h1>
+          )}
           {mode == "squares" ? (
             <ScrollArea
               id="squares"
@@ -74,135 +108,175 @@ export default function FilesList({
               <div className={`grid my-4 grid-cols-2 gap-4 `}>
                 {filteredAndSortedFiles
                   .filter((file) => isFolder(file) || isFolderShortcut(file))
-                  .map((file) => (
-                    <div
-                      key={file.id}
-                      className={`p-2 border shadow-sm cursor-pointer  border-gray-300 focus:bg-[#C2E7FF] hover:bg-gray-100 rounded-lg flex items-center justify-between h-12 w-full bg-white `}
-                      onDoubleClick={() =>
-                        file.shortcutDetails
-                          ? idDispatch({
-                              type: "push",
-                              payload: {
-                                id: file.shortcutDetails.targetId,
-                                name: file.name,
-                              },
-                            })
-                          : idDispatch({
-                              type: "push",
-                              payload: {
-                                id: file.id,
-                                name: file.name,
-                              },
-                            })
-                      }
-                    >
-                      {/* File/Folder Icon and Name */}
-                      <div className={`flex items-center overflow-hidden`}>
-                        <div className={` mr-3 flex-shrink-0 text-black`}>
-                          <FileTypeIcon
-                            type={
-                              file.shortcutDetails
-                                ? file.shortcutDetails.targetMimeType
-                                : file.mimeType
+                  .map((file, ind) => (
+                    <React.Fragment key={ind}>
+                      <div
+                        className={`p-2 border shadow-sm cursor-pointer  border-gray-300 focus:bg-[#C2E7FF] hover:bg-gray-100 rounded-lg flex items-center justify-between h-12 w-full bg-white `}
+                        onDoubleClick={() =>
+                          file.shortcutDetails
+                            ? idDispatch({
+                                type: "push",
+                                payload: {
+                                  id: file.shortcutDetails.targetId,
+                                  name: file.name,
+                                },
+                              })
+                            : idDispatch({
+                                type: "push",
+                                payload: {
+                                  id: file.id,
+                                  name: file.name,
+                                },
+                              })
+                        }
+                      >
+                        {/* File/Folder Icon and Name */}
+                        <div className={`flex items-center overflow-hidden`}>
+                          <div className={` mr-3 flex-shrink-0 text-black`}>
+                            <FileTypeIcon
+                              type={
+                                file.shortcutDetails
+                                  ? file.shortcutDetails.targetMimeType
+                                  : file.mimeType
+                              }
+                            />
+                          </div>
+                          <div className={` min-w-0 flex-1`}>
+                            <Tooltip>
+                              <TooltipTrigger className="text-black   text-base font-medium ">
+                                <span className="flex items-start truncate w-48 ">
+                                  {file.name}
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent>{file.name}</TooltipContent>
+                            </Tooltip>
+                          </div>
+                        </div>
+
+                        {/* File/Folder Actions */}
+                        <div className={`flex items-center gap-3 text-black `}>
+                          {file.isDownloaded ? (
+                            <Check className="h-4 w-4 text-green-500 " />
+                          ) : (
+                            <Download className="h-4 w-4 text-gray-500 " />
+                          )}
+                          <MoreButton
+                            file={file}
+                            onDownload={() =>
+                              handleDownload(
+                                file,
+                                idState.list.map(({ name }) => name)
+                              )
+                            }
+                            onDelete={() =>
+                              handleDelete({
+                                ...file,
+                                path: idState.list
+                                  .map((file) => file.name)
+                                  .concat(isFile(file) ? [] : [file.name]),
+                              })
+                            }
+                            onOpen={() =>
+                              invoke("open_file", {
+                                file: {
+                                  name: file.name,
+                                  path: idState.list.map((file) => file.name),
+                                },
+                              })
                             }
                           />
                         </div>
-                        <div className={` min-w-0 flex-1`}>
-                          <Tooltip>
-                            <TooltipTrigger className="text-black   text-base font-medium ">
-                              <span className="flex items-start truncate w-48 ">
-                                {file.name}
-                              </span>
-                            </TooltipTrigger>
-                            <TooltipContent>{file.name}</TooltipContent>
-                          </Tooltip>
-                        </div>
                       </div>
-
-                      {/* File/Folder Actions */}
-                      <div className={`flex items-center gap-3 text-black `}>
-                        {file.isDownloaded ? (
-                          <Check className="h-4 w-4 text-green-500 " />
-                        ) : (
-                          <Download className="h-4 w-4 text-gray-500 " />
-                        )}
-                        <MoreButton
-                          file={file}
-                          onDownload={() =>
-                            handleDownload(
-                              file,
-                              idState.list.map(({ name }) => name)
-                            )
-                          }
-                          onDelete={() => handleDelete(file.id)}
-                        />
-                      </div>
-                    </div>
+                    </React.Fragment>
                   ))}
               </div>
               <div className={`grid  grid-cols-4 gap-4 pb-2`}>
                 {filteredAndSortedFiles
                   .filter((file) => !isFolder(file) && !isFolderShortcut(file))
-                  .map((file) => (
-                    <div
-                      key={file.id}
-                      className={`p-2 border focus:bg-[#C2E7FF] border-gray-300 hover:bg-gray-100 rounded-lg flex   flex-col items-center justify-between h-32 w-full bg-white `}
-                    >
-                      {/* File/Folder Icon and Name */}
+                  .map((file, ind) => (
+                    <React.Fragment key={ind}>
                       <div
-                        className={`flex flex-col items-center text-center overflow-hidden`}
+                        className={`p-2 border focus:bg-[#C2E7FF] border-gray-300 hover:bg-gray-100 rounded-lg flex   flex-col items-center justify-between h-32 w-full bg-white `}
                       >
-                        <div className={` mb-1 flex-shrink-0 text-black`}>
-                          <FileTypeIcon
-                            type={
-                              file.shortcutDetails
-                                ? file.shortcutDetails.targetMimeType
-                                : file.mimeType
+                        {/* File/Folder Icon and Name */}
+                        <div
+                          className={`flex flex-col items-center text-center overflow-hidden`}
+                        >
+                          <div className={` mb-1 flex-shrink-0 text-black`}>
+                            <FileTypeIcon
+                              type={
+                                file.shortcutDetails
+                                  ? file.shortcutDetails.targetMimeType
+                                  : file.mimeType
+                              }
+                            />
+                          </div>
+                          <div className={`text-center min-w-0 flex-1`}>
+                            <Tooltip>
+                              <TooltipTrigger className="text-sm font-medium">
+                                <span className="inline-block truncate w-32  overflow-hidden text-black">
+                                  {file.name}
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent>{file.name}</TooltipContent>
+                            </Tooltip>
+
+                            <div className="text-xs text-gray-500 mr-3 mt-1">
+                              {formatFileSize(file.size)}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* File/Folder Actions */}
+                        <div className={`flex items-center gap-3  mt-1 `}>
+                          {file.isDownloaded ? (
+                            <Check className="h-4 w-4 text-green-500" />
+                          ) : (
+                            <Download className="h-4 w-4 text-gray-500 " />
+                          )}
+                          <MoreButton
+                            file={file}
+                            onDownload={() => {
+                              handleDownload(
+                                file,
+                                idState.list.map(({ name }) => name)
+                              );
+                              queryClient.removeQueries({
+                                queryKey: [...file.path],
+                                exact: true,
+                              });
+                            }}
+                            onDelete={() => {
+                              queryClient.removeQueries({
+                                queryKey: [...file.path],
+                                exact:true
+                              });
+                              handleDelete({
+                                ...file,
+                                path: idState.list
+                                  .map((file) => file.name)
+                                  .concat(isFile(file) ? [] : [file.name]),
+                              });
+                            }}
+                            onOpen={() =>
+                              invoke("open_file", {
+                                file: {
+                                  name: file.name,
+                                  path: idState.list.map((file) => file.name),
+                                },
+                              })
                             }
                           />
                         </div>
-                        <div className={`text-center min-w-0 flex-1`}>
-                          <Tooltip>
-                            <TooltipTrigger className="text-sm font-medium">
-                              <span className="inline-block truncate w-32  overflow-hidden text-black">
-                                {file.name}
-                              </span>
-                            </TooltipTrigger>
-                            <TooltipContent>{file.name}</TooltipContent>
-                          </Tooltip>
-
-                          <div className="text-xs text-gray-500 mr-3 mt-1">
-                            {formatFileSize(file.size)}
-                          </div>
-                        </div>
                       </div>
-
-                      {/* File/Folder Actions */}
-                      <div className={`flex items-center gap-3  mt-1 `}>
-                        {file.isDownloaded ? (
-                          <Check className="h-4 w-4 text-green-500" />
-                        ) : (
-                          <Download className="h-4 w-4 text-gray-500 " />
-                        )}
-                        <MoreButton
-                          file={file}
-                          onDownload={() =>
-                            handleDownload(
-                              file,
-                              idState.list.map(({ name }) => name)
-                            )
-                          }
-                          onDelete={() => handleDelete(file.id)}
-                        />
-                      </div>
-                    </div>
+                    </React.Fragment>
                   ))}
               </div>
             </ScrollArea>
           ) : (
             paginatedFiles.map((file, ind, array) => (
               <div
-                key={file.id}
+                key={ind}
                 className={`p-2 rounded-none shadow-none border border-t-0 border-gray-300 focus:bg-[#C2E7FF] hover:bg-gray-100  flex items-center justify-between h-12  border-x-0  ${
                   ind == array.length - 1 && "border-b-0"
                 }
@@ -276,7 +350,22 @@ export default function FilesList({
                         idState.list.map(({ name }) => name)
                       )
                     }
-                    onDelete={() => handleDelete(file.id)}
+                    onDelete={() =>
+                      handleDelete({
+                        ...file,
+                        path: idState.list
+                          .map((file) => file.name)
+                          .concat(isFile(file) ? [] : [file.name]),
+                      })
+                    }
+                    onOpen={() =>
+                      invoke("open_file", {
+                        file: {
+                          name: file.name,
+                          path: idState.list.map((file) => file.name),
+                        },
+                      })
+                    }
                   />
                 </div>
               </div>

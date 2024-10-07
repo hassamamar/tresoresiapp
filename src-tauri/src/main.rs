@@ -43,7 +43,12 @@ fn main() {
             app_lib::get_library,
             app_lib::loaded,
             app_lib::download,
-            app_lib::file_list
+            app_lib::file_list,
+            app_lib::file_exist,
+            app_lib::file_list_offline,
+            app_lib::open_file,
+            app_lib::delete_file,
+            app_lib::delete_folder
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

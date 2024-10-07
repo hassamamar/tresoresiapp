@@ -1,23 +1,28 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 import { useReducer } from "react";
 
 import Image from "next/image";
-import { useQuery } from "@tanstack/react-query";
-import axios from "axios";
-import FileManager, { IdStateType, OnlineAction } from "./FileManager";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import FileManager, { OnlineAction, OnlineIdStateType } from "./FileManager";
 import { Button } from "@/components/ui/button";
 import { HardDriveIcon } from "lucide-react";
 import Link from "next/link";
 import { invoke } from "@tauri-apps/api/core";
+import { OfflineIdStateType } from "./offline";
+import { FileType } from "./dependencies/more";
 
 // Define the initial state
-const initialState: IdStateType = {
+const initialState: OnlineIdStateType = {
   list: [{ id: "1akzOIDlH3IjZY-hDVyW5fb8Jwg12zdi0", name: "Tresor Esi" }],
   id: "1akzOIDlH3IjZY-hDVyW5fb8Jwg12zdi0",
 };
 
 // Define the reducer function
-const reducer = (state: IdStateType, action: OnlineAction): IdStateType => {
+const reducer = (
+  state: OnlineIdStateType,
+  action: OnlineAction
+): OnlineIdStateType => {
   switch (action.type) {
     case "push":
       return {
@@ -37,10 +42,8 @@ const reducer = (state: IdStateType, action: OnlineAction): IdStateType => {
       return state;
   }
 };
-function sleep(ms:number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
 export default function TresorDrive() {
+  const queryClient=useQueryClient();
   const [idState, idDispatch] = useReducer(reducer, initialState);
   const { isLoading, data } = useQuery({
     queryKey: [idState.id],
@@ -49,17 +52,28 @@ export default function TresorDrive() {
       try {
         const res: string = await invoke("file_list", { id: idState.id });
         console.log(JSON.parse(res));
-        return JSON.parse(res).files;
+        const files: FileType[] = JSON.parse(res).files;
+        for (const file of files) {
+          file.isDownloaded = await invoke("file_exist", {
+            file: {
+              name: file.name,
+              path: idState.list.map((file) => file.name),
+            },
+          });
+        }
+        return files;
       } catch (error) {
-        return error;
+        console.log(error);
+        return [];
       }
     },
   });
 
   return (
     <FileManager
-      idState={idState}
-      idDispatch={idDispatch}
+    queryClient={queryClient}
+      idState={idState as OfflineIdStateType & OnlineIdStateType}
+      idDispatch={idDispatch as any}
       isSearchFilter={true}
       isToggle={true}
       data={data}

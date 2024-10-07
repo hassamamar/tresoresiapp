@@ -18,9 +18,12 @@ import {
   LoadingComponent,
 } from "./dependencies/more";
 import { FileLib, FullFileLib } from "./dependencies/FileSystem";
+import { OfflineAction, OfflineIdStateType } from "./offline";
+import { QueryClient } from "@tanstack/react-query";
 interface FileManagerProps {
-  idState: IdStateType;
-  idDispatch: Dispatch<OnlineAction>;
+  queryClient:QueryClient
+  idState: OfflineIdStateType & OnlineIdStateType;
+  idDispatch: Dispatch<OnlineAction> & Dispatch<OfflineAction>;
   children: React.ReactNode;
   isSearchFilter: boolean;
   isToggle: boolean;
@@ -32,11 +35,12 @@ export type OnlineAction =
   | { type: "goto"; payload: number };
 
 // Define the state structure
-export interface IdStateType {
+export interface OnlineIdStateType {
   list: { id: string; name: string }[];
   id: string;
 }
 export default function FileManager({
+  queryClient,
   idState,
   idDispatch,
   children,
@@ -178,6 +182,7 @@ export default function FileManager({
         </div>
       ) : (
         <FilesList
+        queryClient={queryClient}
           filteredAndSortedFiles={filteredAndSortedFiles}
           setFiles={setFiles}
           mode={mode}

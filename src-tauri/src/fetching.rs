@@ -64,9 +64,9 @@ pub async fn file_list(id: String) -> Result<String, String> {
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct DownloadItem {
     id: String,
-    name: String,
+    pub name: String,
     progress: u8, // Download progress percentage
-    path: Vec<String>,
+    pub path: Vec<String>,
 }
 #[tauri::command]
 pub async fn download(
@@ -81,7 +81,7 @@ pub async fn download(
         .map_err(|_| "Failed to add download to state".to_string())?;
     println!("downloading : {:?}", download_file);
     let api_key: String = std::env::var("GOOGLE_API_KEY")
-        .unwrap_or(String::from("AIzaSyCmuuYqcdpNDxafcVFMLa6ZhW4j_6X3zYE"));
+        .unwrap_or(String::from("api key not set"));
     let url = format!(
         "https://www.googleapis.com/drive/v3/files/{}?alt=media&key={}",
         download_file.id, api_key

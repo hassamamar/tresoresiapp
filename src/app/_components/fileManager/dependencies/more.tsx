@@ -13,10 +13,12 @@ import {
   FileCode,
   Archive,
   ExternalLink,
-  Trash2,
   ImageIcon,
   FolderClosedIcon,
   CopyPlusIcon,
+  PanelLeftOpenIcon,
+  FolderXIcon,
+  CircleXIcon,
 } from "lucide-react";
 import {
   Breadcrumb,
@@ -56,9 +58,11 @@ export function MoreButton({
   file,
   onDownload,
   onDelete,
+  onOpen,
 }: {
   file: FileType;
   onDownload: () => void;
+  onOpen: () => void;
   onDelete: () => void;
 }) {
   return (
@@ -69,33 +73,41 @@ export function MoreButton({
         <MoreHorizontal className="h-4 w-4 text-black" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="m-0 overflow-hidden">
+        {isFile(file) && file.isDownloaded && (
+          <DropdownMenuItem onSelect={() => onOpen()}>
+            <PanelLeftOpenIcon className="mr-2 h-4 w-4" />
+            <span>Open</span>
+          </DropdownMenuItem>
+        )}
         {isFile(file) && (
           <DropdownMenuItem
             onSelect={() => {
               console.log("donwloading");
-              onDownload();
+              if (file.isDownloaded) onDelete();
+              else onDownload();
             }}
           >
-            <Download className="mr-2 h-4 w-4" />
-            <span>{file.isDownloaded ? "Redownload" : "Download"}</span>
+            {file.isDownloaded ? (
+              <CircleXIcon className="mr-2 h-4 w-4" />
+            ) : (
+              <Download className="mr-2 h-4 w-4" />
+            )}
+            <span>{file.isDownloaded ? "Delete" : "Download"}</span>
           </DropdownMenuItem>
         )}
-        {!file.isDownloaded &&
-          isFile(file) &&(
-            <DropdownMenuItem onSelect={() => onDelete()}>
-              <Trash2 className="mr-2 h-4 w-4" />
-              <span>Delete</span>
-            </DropdownMenuItem>
-          )}
-        {isFile(file) && <DropdownMenuItem>
-          <CopyPlusIcon className="mr-2 h-4 w-4" />
-          <span>Add to library</span>
-        </DropdownMenuItem>}
+        {isFile(file) && (
+          <DropdownMenuItem>
+            <CopyPlusIcon className="mr-2 h-4 w-4" />
+            <span>Add to library</span>
+          </DropdownMenuItem>
+        )}
 
-        <DropdownMenuItem onClick={() => open(GetExternalLink(file))}>
-          <ExternalLink className="mr-2 h-4 w-4" />
-          <span>External Link</span>
-        </DropdownMenuItem>
+        {file.id && (
+          <DropdownMenuItem onClick={() => open(GetExternalLink(file))}>
+            <ExternalLink className="mr-2 h-4 w-4" />
+            <span>External Link</span>
+          </DropdownMenuItem>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );
@@ -232,14 +244,14 @@ export function BreadcrumbFiles({
         )}
         {list.length > 3
           ? list.slice(-2).map((folder, ind, arr) => (
-              <React.Fragment key={folder.id}>
+              <React.Fragment key={ind}>
                 {" "}
                 {/* Use folder.id as key */}
                 <BreadcrumbItem
                   id={folder.id}
                   onClick={() =>
                     ind != arr.length - 1 &&
-                    idDispatch({ type: "goto", payload: ind + 2 })
+                    idDispatch({ type: "goto", payload: ind +list.length- 2 })
                   }
                   className="selectDisable hover:text-black cursor-pointer"
                 >
@@ -251,7 +263,7 @@ export function BreadcrumbFiles({
               </React.Fragment>
             ))
           : list.map((folder, ind, arr) => (
-              <React.Fragment key={folder.id}>
+              <React.Fragment key={ind}>
                 {" "}
                 {/* Use folder.id as key */}
                 <BreadcrumbItem
