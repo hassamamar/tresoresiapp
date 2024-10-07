@@ -1,4 +1,4 @@
-"use client"
+"use client";
 import { useReducer } from "react";
 
 import Image from "next/image";
@@ -8,7 +8,7 @@ import FileManager, { IdStateType, OnlineAction } from "./FileManager";
 import { Button } from "@/components/ui/button";
 import { HardDriveIcon } from "lucide-react";
 import Link from "next/link";
-
+import { invoke } from "@tauri-apps/api/core";
 
 // Define the initial state
 const initialState: IdStateType = {
@@ -37,7 +37,9 @@ const reducer = (state: IdStateType, action: OnlineAction): IdStateType => {
       return state;
   }
 };
-
+function sleep(ms:number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 export default function TresorDrive() {
   const [idState, idDispatch] = useReducer(reducer, initialState);
   const { isLoading, data } = useQuery({
@@ -45,10 +47,9 @@ export default function TresorDrive() {
     staleTime: Infinity,
     queryFn: async () => {
       try {
-        const res = await axios.get(`http://localhost:3000/api/drive`, {
-          params: { id: idState.id },
-        });
-        return res.data;
+        const res: string = await invoke("file_list", { id: idState.id });
+        console.log(JSON.parse(res));
+        return JSON.parse(res).files;
       } catch (error) {
         return error;
       }
@@ -77,15 +78,18 @@ export default function TresorDrive() {
             className="mr-1 selectDisable data-tauri-drag-region"
             data-tauri-drag-region
           />
-          Tresor Drive 
+          Tresor Drive
         </h1>
-       <Link href="/drive/offline"> <Button
-          className="font-bold mb-7 flex gap-2 items-center selectDisable "
-          variant="outline"
-        >
-          <HardDriveIcon width={18} />
-          Go offline
-        </Button></Link>
+        <Link href="/drive/offline">
+          {" "}
+          <Button
+            className="font-bold mb-7 flex gap-2 items-center selectDisable "
+            variant="outline"
+          >
+            <HardDriveIcon width={18} />
+            Go offline
+          </Button>
+        </Link>
       </div>
     </FileManager>
   );
