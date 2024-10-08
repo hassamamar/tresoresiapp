@@ -1,104 +1,151 @@
-export interface FileLib {
+export interface FileType {
   id?: string;
-  real_path?: string;
-  type: string;
-  children?: Map<string, FileLib>;
-}
-
-interface SerializedFileLib {
-  id?: string;
-  real_path?: string;
-  type: string;
-  children?: [string, SerializedFileLib][];
-}
-
-export interface FullFileLib extends FileLib {
   name: string;
+  mimeType: string;
+  isDownloaded: boolean;
+  size?: number;
+  shortcutDetails?: {
+    targetId: string;
+    targetMimeType: string;
+  };
 }
+// FileLib and FullFileLib Classes
+export class FileLib implements FileType {
+  id?: string;
+  name: string;
+  mimeType: string;
+  isDownloaded: boolean;
+  real_path?: string;
+  children?: Map<string, FileLib>;
+  size?: number;
+  constructor(
+    name: string,
+    mimeType: string,
+    isDownloaded: boolean,
+    id?: string,
+    real_path?: string,
+    children?: Map<string, FileLib>,
+    size?: number
+  ) {
+    this.size = size;
+    this.name = name;
+    this.id = id;
+    this.real_path = real_path;
+    this.mimeType = mimeType;
+    this.children = children || new Map<string, FileLib>();
+    this.isDownloaded = isDownloaded == true;
+  }
 
-export interface FSLib {
+  serialize(): SerializedFileLib {
+    return new SerializedFileLib(
+      this.name,
+      this.mimeType,
+      this.isDownloaded,
+      this.size,
+      this.id,
+      this.real_path,
+
+      this.children
+        ? Array.from(this.children.entries()).map(([key, child]) => [
+            key,
+            child.serialize(),
+          ])
+        : undefined
+    );
+  }
+}
+// FSLib Class
+export class FSLib {
   files: Map<string, FileLib>;
-  last_visited: Array<FullFileLib>;
+  last_visited: Array<FileLib>;
+
+  constructor(files?: Map<string, FileLib>, last_visited?: Array<FileLib>) {
+    this.files = files || new Map<string, FileLib>();
+    this.last_visited = last_visited || [];
+  }
 }
 
-export interface SerializedFSLib {
+// SerializedFileLib Class
+export class SerializedFileLib implements FileType {
+  id?: string;
+  name: string;
+  mimeType: string;
+  real_path?: string;
+  size?: number;
+  children?: [string, SerializedFileLib][];
+  constructor(
+    name: string,
+    mimeType: string,
+    isDownloaded: boolean,
+    size?: number,
+    id?: string,
+    real_path?: string,
+    children?: [string, SerializedFileLib][]
+  ) {
+    this.name = name;
+    this.mimeType = mimeType;
+    this.isDownloaded = isDownloaded == true;
+    this.size = size;
+    this.id = id;
+    this.real_path = real_path;
+    this.children = children;
+  }
+  isDownloaded: boolean;
+
+  parse(): FileLib {
+    const fileLib = new FileLib(
+      this.name,
+      this.mimeType,
+      this.isDownloaded,
+      this.id,
+      this.real_path,
+      this.children ? new Map<string, FileLib>() : undefined,
+      this.size
+    );
+
+    // Parse children
+    if (this.children) {
+      this.children.forEach(([key, child]) => {
+        fileLib.children!.set(key, child.parse());
+      });
+    }
+
+    return fileLib;
+  }
+}
+
+// SerializedFSLib Class
+export class SerializedFSLib {
   files: [string, SerializedFileLib][];
-  last_visited: Omit<FullFileLib, "children">[];
-}
+  last_visited: Omit<FileLib, "children">[];
 
-// Serialize FSLib to a JSON-compatible format
-export function serializeFSLib(fsLib: FSLib): SerializedFSLib {
-  if (!(fsLib instanceof Object)) {
-    throw new TypeError("Expected an FSLib object.");
+  constructor(
+    files: [string, SerializedFileLib][],
+    last_visited: Omit<FileLib, "children">[]
+  ) {
+    this.files = files;
+    this.last_visited = last_visited;
   }
+  // Parse a serialized FSLib object back to FSLib
+  parse(): FSLib {
+    const fsLib = new FSLib();
 
-  return {
-    files: Array.from(fsLib.files.entries()).map(([key, value]) => [
-      key,
-      serializeFileLib(value),
-    ]),
-    last_visited: fsLib.last_visited.map((file) => ({
-      id: file.id,
-      real_path: file.real_path,
-      type: file.type,
-      name: file.name,
-    })),
-  };
-}
-
-// Serialize individual FileLib to a JSON-compatible format
-function serializeFileLib(fileLib: FileLib): SerializedFileLib {
-  return {
-    id: fileLib.id,
-    real_path: fileLib.real_path,
-    type: fileLib.type,
-    children: fileLib.children
-      ? Array.from(fileLib.children.entries()).map(([key, child]) => [
-          key,
-          serializeFileLib(child),
-        ])
-      : undefined, // Use undefined instead of Map for children
-  };
-}
-
-// Parse a serialized FSLib object back to FSLib
-export function parseFSLib(serialized: SerializedFSLib): FSLib {
-  const fsLib: FSLib = {
-    files: new Map<string, FileLib>(),
-    last_visited: [],
-  };
-
-  // Parse files
-  serialized.files.forEach(([key, value]) => {
-    fsLib.files.set(key, parseFileLib(value));
-  });
-
-  // Parse last_visited
-  fsLib.last_visited = serialized.last_visited.map((file) => ({
-    id: file.id,
-    real_path: file.real_path,
-    type: file.type,
-    name: file.name,
-  }));
-
-  return fsLib;
-}
-
-// Parse individual SerializedFileLib back to FileLib
-function parseFileLib(serialized: SerializedFileLib): FileLib {
-  const fileLib: FileLib = {
-    id: serialized.id,
-    real_path: serialized.real_path,
-    type: serialized.type,
-    children: serialized.children ? new Map<string, FileLib>() : undefined,
-  };
-
-  // Parse children
-  if (serialized.children) {
-    serialized.children.forEach(([key, child]) => {
-      fileLib.children!.set(key, parseFileLib(child));
+    // Parse files
+    this.files.forEach(([key, value]) => {
+      fsLib.files.set(key, value.parse());
     });
-  }
 
-  return fileLib;
+    // Parse last_visited
+    fsLib.last_visited = this.last_visited.map(
+      (file) =>
+        new FileLib(
+          file.name,
+          file.mimeType,
+          file.isDownloaded,
+          file.id,
+          file.real_path
+        )
+    );
+    return fsLib;
+  }
 }

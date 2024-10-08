@@ -12,30 +12,54 @@ import { GridIcon, ListIcon, ArrowUpDown } from "lucide-react";
 import FilesList from "./dependencies/filesList";
 import {
   BreadcrumbFiles,
-  FileType,
   isFolder,
   isFolderShortcut,
   LoadingComponent,
 } from "./dependencies/more";
-import { FileLib, FullFileLib } from "./dependencies/FileSystem";
-import { OfflineAction, OfflineIdStateType } from "./offline";
+import { FileType } from "./dependencies/FileSystem";
+import { OfflineAction } from "./offline";
 import { QueryClient } from "@tanstack/react-query";
 interface FileManagerProps {
-  queryClient:QueryClient
-  idState: OfflineIdStateType & OnlineIdStateType;
-  idDispatch: Dispatch<OnlineAction> & Dispatch<OfflineAction>;
+  queryClient: QueryClient;
+  idState: IdStateType;
+  idDispatch: Dispatch<Action> & Dispatch<OfflineAction>;
   children: React.ReactNode;
   isSearchFilter: boolean;
   isToggle: boolean;
-  data: (FileType & FileLib & FullFileLib)[];
+  data: FileType[];
   isLoading: boolean;
 }
-export type OnlineAction =
+const initialState: IdStateType = {
+  list: [{ id: "1akzOIDlH3IjZY-hDVyW5fb8Jwg12zdi0", name: "Tresor Esi" }],
+  id: "1akzOIDlH3IjZY-hDVyW5fb8Jwg12zdi0",
+};
+export { initialState };
+export function reducer(state: IdStateType, action: Action): IdStateType {
+  switch (action.type) {
+    case "push":
+      return {
+        list: [...state.list, action.payload], // Add the new item (object) to the list
+        id: action.payload.id, // Update id to the payload's id
+      };
+    case "goto": {
+      const item = state.list[action.payload];
+      if (item)
+        return {
+          list: state.list.slice(0, action.payload + 1),
+          id: item.id, // Change id to the new payload string
+        };
+      else return state;
+    }
+    default:
+      return state;
+  }
+}
+export type Action =
   | { type: "push"; payload: { id: string; name: string } }
   | { type: "goto"; payload: number };
 
 // Define the state structure
-export interface OnlineIdStateType {
+export interface IdStateType {
   list: { id: string; name: string }[];
   id: string;
 }
@@ -56,7 +80,7 @@ export default function FileManager({
     "all" | "downloaded" | "not-downloaded"
   >("all");
   const [searchTerm, setSearchTerm] = useState("");
-  const [files, setFiles] = useState<(FileType & FileLib & FullFileLib)[]>([]);
+  const [files, setFiles] = useState<FileType[]>([]);
 
   const toggleMode = () => setMode(mode === "list" ? "squares" : "list");
   useEffect(() => setFiles(data || []), [data]);
@@ -88,8 +112,8 @@ export default function FileManager({
                 ? a.name.localeCompare(b.name)
                 : b.name.localeCompare(a.name);
             } else {
-              const sizeA = a.size;
-              const sizeB = b.size;
+              const sizeA = a.size || 0;
+              const sizeB = b.size || 0;
               return sortOrder === "asc" ? sizeA - sizeB : sizeB - sizeA;
             }
           })
@@ -182,7 +206,7 @@ export default function FileManager({
         </div>
       ) : (
         <FilesList
-        queryClient={queryClient}
+          queryClient={queryClient}
           filteredAndSortedFiles={filteredAndSortedFiles}
           setFiles={setFiles}
           mode={mode}

@@ -9,6 +9,8 @@ use std::fs::File;
 use std::io::Write;
 
 use crate::get_app_data_path;
+use crate::store_file_id;
+use crate::Metadata;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ShortcutDetails {
@@ -115,7 +117,7 @@ pub async fn download(
     }
     let file_path = file_parent_path.join(download_file.name); // Specify your file name
     let mut file = File::create(&file_path).map_err(|_| "Failed to create file".to_string())?;
-
+    store_file_id(file_path.clone(), &Metadata{id:download_file.id.clone()}).unwrap();
     // Read the response in chunks
     while let Some(chunk) = response
         .chunk()

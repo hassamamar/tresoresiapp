@@ -1,5 +1,6 @@
 use std::{
     fs::{self, File},
+    io,
     path::PathBuf,
 };
 
@@ -7,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use tauri::AppHandle;
 use tauri_plugin_shell::ShellExt;
 
-use crate::get_app_data_path;
+use crate::{create_ads, get_app_data_path, read_ads};
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ReceiveFileType {
     name: String,
@@ -16,8 +17,9 @@ pub struct ReceiveFileType {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SendFileType {
+    id:String,
     name: String,
-    size:usize,
+    size: usize,
     mimeType: String,
 }
 pub fn get_offline_path(app_handle: &AppHandle, path: Vec<String>) -> PathBuf {
@@ -56,9 +58,14 @@ pub fn file_list_offline(
                 } else {
                     String::from("application/vnd.google-apps.file")
                 };
-                let size=entry.metadata().unwrap().len() as usize;
+                let size = entry.metadata().unwrap().len() as usize;
                 // Push into Vec<File>
-                entries.push(SendFileType { name, mimeType,size });
+                entries.push(SendFileType {
+                    id:read_file_id(path).unwrap(),
+                    name,
+                    mimeType,
+                    size,
+                });
             }
         }
     }
@@ -77,13 +84,57 @@ pub fn open_file(file: ReceiveFileType, app_handle: AppHandle) -> Result<(), ()>
 #[tauri::command]
 pub fn delete_file(file: ReceiveFileType, app_handle: AppHandle) -> Result<(), String> {
     let file_path = get_offline_path(&app_handle, file.path).join(file.name);
-    println!("{:#?}",file_path);
-    let result=fs::remove_file(file_path);
-    println!("{:#?}",result);
-    result.map_err(|err|format!("{:#?}",err))
+    println!("{:#?}", file_path);
+    let result = fs::remove_file(file_path);
+    println!("{:#?}", result);
+    result.map_err(|err| format!("{:#?}", err))
 }
 #[tauri::command]
 pub fn delete_folder(path: Vec<String>, app_handle: AppHandle) -> Result<(), String> {
     let file_path = get_offline_path(&app_handle, path);
-    fs::remove_dir_all(file_path).map_err(|_|"Failed to delete file".to_string())
+    fs::remove_dir_all(file_path).map_err(|_| "Failed to delete file".to_string())
+}
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Metadata {
+    pub id: String,
+}
+pub fn store_file_id(file_path: PathBuf, metadata: &Metadata) -> io::Result<()> {
+    let path = file_path.to_str().unwrap();
+
+    #[cfg(target_os = "windows")]
+    {
+        // Use alternate data streams on Windows
+        create_ads(path, "id", &metadata.id)?;
+    }
+
+    #[cfg(any(target_os = "linux", target_os = "macos"))]
+    {
+        use xattr::set;
+
+        // Use extended attributes on Linux
+        let metadata_json = serde_json::to_string(metadata).unwrap();
+        set(path, "user.metadata", metadata_json.as_bytes())?;
+    }
+
+    Ok(())
+}
+
+
+fn read_file_id(file_path: PathBuf) -> Result<String,()> {
+    let path = file_path.to_str().unwrap();
+    let id:String;
+    #[cfg(target_os = "windows")]
+    {
+        // Use alternate data streams on Windows
+        id=read_ads(path, "id").unwrap();
+    }
+
+    #[cfg(any(target_os = "linux", target_os = "macos"))]
+    {
+        use xattr::get;
+
+        id =get(path, "user.metadata").unwrap().to_owned();
+    }
+
+    Ok(id)
 }

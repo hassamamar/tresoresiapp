@@ -4,6 +4,8 @@ use tauri::{ AppHandle, Manager};
 mod local;
 mod fetching;
 mod virtualfs;
+mod win_adr;
+pub use win_adr::*;
 pub use fetching::*;
 pub use virtualfs::*;
 pub use local::*;

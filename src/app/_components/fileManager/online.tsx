@@ -4,44 +4,18 @@ import { useReducer } from "react";
 
 import Image from "next/image";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import FileManager, { OnlineAction, OnlineIdStateType } from "./FileManager";
+import FileManager, { reducer, initialState,  } from "./FileManager";
 import { Button } from "@/components/ui/button";
 import { HardDriveIcon } from "lucide-react";
 import Link from "next/link";
 import { invoke } from "@tauri-apps/api/core";
-import { OfflineIdStateType } from "./offline";
-import { FileType } from "./dependencies/more";
+import { FileType } from "./dependencies/FileSystem";
 
 // Define the initial state
-const initialState: OnlineIdStateType = {
-  list: [{ id: "1akzOIDlH3IjZY-hDVyW5fb8Jwg12zdi0", name: "Tresor Esi" }],
-  id: "1akzOIDlH3IjZY-hDVyW5fb8Jwg12zdi0",
-};
+
 
 // Define the reducer function
-const reducer = (
-  state: OnlineIdStateType,
-  action: OnlineAction
-): OnlineIdStateType => {
-  switch (action.type) {
-    case "push":
-      return {
-        list: [...state.list, action.payload], // Add the new item (object) to the list
-        id: action.payload.id, // Update id to the payload's id
-      };
-    case "goto": {
-      const item = state.list[action.payload];
-      if (item)
-        return {
-          list: state.list.slice(0, action.payload + 1),
-          id: item.id, // Change id to the new payload string
-        };
-      else return state;
-    }
-    default:
-      return state;
-  }
-};
+
 export default function TresorDrive() {
   const queryClient=useQueryClient();
   const [idState, idDispatch] = useReducer(reducer, initialState);
@@ -72,11 +46,11 @@ export default function TresorDrive() {
   return (
     <FileManager
     queryClient={queryClient}
-      idState={idState as OfflineIdStateType & OnlineIdStateType}
+      idState={idState }
       idDispatch={idDispatch as any}
       isSearchFilter={true}
       isToggle={true}
-      data={data}
+      data={data || []}
       isLoading={isLoading}
     >
       <div className="flex justify-between mt-3">

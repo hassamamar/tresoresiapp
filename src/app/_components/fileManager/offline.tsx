@@ -8,43 +8,15 @@ import { Button } from "@/components/ui/button";
 import { GlobeIcon } from "lucide-react";
 import Link from "next/link";
 import { invoke } from "@tauri-apps/api/core";
-import FileManager from "./FileManager";
-import { FileType } from "./dependencies/more";
+import FileManager, { initialState, reducer } from "./FileManager";
+import { FileType } from "./dependencies/FileSystem";
 
 // Define the action type with appropriate payloads for each action
 export type OfflineAction =
-  | { type: "push"; payload: { name: string } }
+  | { type: "push"; payload: {id:string, name: string } }
   | { type: "goto"; payload: number };
 
-// Define the initial state
-const initialState: OfflineIdStateType = {
-  list: [{ name: "Tresor Esi" }],
-};
-export interface OfflineIdStateType {
-  list: { name: string }[];
-}
-// Define the reducer function
-const reducer = (
-  state: OfflineIdStateType,
-  action: OfflineAction
-): OfflineIdStateType => {
-  switch (action.type) {
-    case "push":
-      return {
-        list: [...state.list, action.payload], // Add the new item (object) to the list
-      };
-    case "goto": {
-      const item = state.list[action.payload];
-      if (item)
-        return {
-          list: state.list.slice(0, action.payload + 1),
-        };
-      else return state;
-    }
-    default:
-      return state;
-  }
-};
+
 
 export default function TresorDrive() {
   const [idState, idDispatch] = useReducer(reducer, initialState);
