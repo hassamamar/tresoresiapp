@@ -13,22 +13,20 @@ import { FileType } from "./dependencies/FileSystem";
 
 // Define the action type with appropriate payloads for each action
 export type OfflineAction =
-  | { type: "push"; payload: {id:string, name: string } }
+  | { type: "push"; payload: { id: string; name: string } }
   | { type: "goto"; payload: number };
-
-
 
 export default function TresorDrive() {
   const [idState, idDispatch] = useReducer(reducer, initialState);
-  console.log("querry key here :")
+  console.log("querry key here :");
   console.log(idState.list.map((file) => file.name));
-  const queryClient=useQueryClient();
+  const queryClient = useQueryClient();
   const { isLoading, data } = useQuery({
-    queryKey: idState.list.map(file=>file.name),
+    queryKey: [idState.id, "offline"],
     staleTime: Infinity,
     queryFn: async () => {
       try {
-          console.log("querry executed :");
+        console.log("querry executed :");
         console.log("list here :");
         console.log(idState.list);
         const files: FileType[] = await invoke("file_list_offline", {
@@ -46,7 +44,7 @@ export default function TresorDrive() {
 
   return (
     <FileManager
-     queryClient={queryClient}
+      queryClient={queryClient}
       idState={idState as any}
       idDispatch={idDispatch as any}
       isSearchFilter={true}

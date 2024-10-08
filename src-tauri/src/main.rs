@@ -29,9 +29,9 @@ fn main() {
             }
 
             // Store the content in Arc<Mutex>
-            let file_content = Arc::new(Mutex::new(initial_content));
+            let library_file_content = Arc::new(Mutex::new(initial_content));
 
-            app.manage(file_content); // Manage state for global access
+            app.manage(library_file_content); // Manage state for global access
 
             Ok(())
         })

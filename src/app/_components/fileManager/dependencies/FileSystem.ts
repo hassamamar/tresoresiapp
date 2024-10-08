@@ -1,36 +1,39 @@
 export interface FileType {
-  id?: string;
+  id: string;
   name: string;
   mimeType: string;
   isDownloaded: boolean;
+  path?: string[];
   size?: number;
   shortcutDetails?: {
     targetId: string;
     targetMimeType: string;
   };
+  children?: Map<string, FileLib>;
 }
 // FileLib and FullFileLib Classes
 export class FileLib implements FileType {
-  id?: string;
+  id: string;
   name: string;
   mimeType: string;
   isDownloaded: boolean;
-  real_path?: string;
+  path?: string[];
   children?: Map<string, FileLib>;
   size?: number;
+
   constructor(
     name: string,
     mimeType: string,
     isDownloaded: boolean,
-    id?: string,
-    real_path?: string,
+    id: string,
+    path?: string[],
     children?: Map<string, FileLib>,
     size?: number
   ) {
     this.size = size;
     this.name = name;
     this.id = id;
-    this.real_path = real_path;
+    this.path = path;
     this.mimeType = mimeType;
     this.children = children || new Map<string, FileLib>();
     this.isDownloaded = isDownloaded == true;
@@ -38,13 +41,12 @@ export class FileLib implements FileType {
 
   serialize(): SerializedFileLib {
     return new SerializedFileLib(
+      this.id,
       this.name,
       this.mimeType,
       this.isDownloaded,
       this.size,
-      this.id,
-      this.real_path,
-
+      this.path,
       this.children
         ? Array.from(this.children.entries()).map(([key, child]) => [
             key,
@@ -54,6 +56,7 @@ export class FileLib implements FileType {
     );
   }
 }
+
 // FSLib Class
 export class FSLib {
   files: Map<string, FileLib>;
@@ -63,23 +66,104 @@ export class FSLib {
     this.files = files || new Map<string, FileLib>();
     this.last_visited = last_visited || [];
   }
+  readFile(path: string[]): FileLib | undefined {
+    let currentFile: FileLib | undefined;
+    let currentMap = this.files;
+
+    for (const segment of path) {
+      currentFile = currentMap.get(segment);
+
+      if (!currentFile) {
+        return undefined; // If file not found, return undefined
+      }
+
+      if (currentFile.children) {
+        currentMap = currentFile.children;
+      } else if (segment !== path[path.length - 1]) {
+        return undefined; // If not the last segment and no children, return undefined
+      }
+    }
+
+    return currentFile;
+  }
+  readFolder(path: string[]): FileLib[] | undefined {
+    let currentFile: FileLib | undefined;
+    let currentMap = this.files;
+
+    for (const segment of path) {
+      currentFile = currentMap.get(segment);
+
+      if (!currentFile) {
+        return undefined; // If file not found, return undefined
+      }
+
+      if (currentFile.children) {
+        currentMap = currentFile.children;
+      } else if (segment !== path[path.length - 1]) {
+        return undefined; // If not the last segment and no children, return undefined
+      }
+    }
+    const files = currentFile?.children?.entries().map(([, file]) => file);
+    if (files) return Array.from(files);
+    else return [];
+  }
+
+  writeFile(path: string[], file: FileLib): void {
+    path.push(file.name);
+    let currentMap = this.files;
+    // Traverse the path until we reach the second-to-last directory
+    for (let i = 0; i < path.length - 1; i++) {
+      const segment = path[i];
+      // Get the current file/folder at the path segment
+      let currentFile = currentMap.get(segment);
+
+      // If the segment doesn't exist, create a new folder
+      if (!currentFile) {
+        currentFile = new FileLib(
+          segment,
+          "application/vnd.google-apps.folder", // Google Drive type for folders
+          false, // Not downloaded by default
+          segment,
+          path.slice(0, i + 1)
+        );
+        currentMap.set(segment, currentFile);
+      }
+
+      // Verify that the current file is a folder (Google Drive folder type)
+      if (currentFile.mimeType !== "application/vnd.google-apps.folder") {
+        throw new Error(
+          `Path error: '${segment}' is a file, expected a folder.`
+        );
+      }
+
+      // Move to the children of the current folder
+      if (!currentFile.children) {
+        currentFile.children = new Map<string, FileLib>();
+      }
+      currentMap = currentFile.children;
+    }
+
+    // Insert the file at the last segment
+    const lastSegment = path[path.length - 1];
+    currentMap.set(lastSegment, file);
+  }
 }
 
 // SerializedFileLib Class
-export class SerializedFileLib implements FileType {
-  id?: string;
+export class SerializedFileLib implements Omit<FileType, "children"> {
+  id: string;
   name: string;
   mimeType: string;
-  real_path?: string;
+  path?: string[];
   size?: number;
   children?: [string, SerializedFileLib][];
   constructor(
+    id: string,
     name: string,
     mimeType: string,
     isDownloaded: boolean,
     size?: number,
-    id?: string,
-    real_path?: string,
+    path?: string[],
     children?: [string, SerializedFileLib][]
   ) {
     this.name = name;
@@ -87,7 +171,7 @@ export class SerializedFileLib implements FileType {
     this.isDownloaded = isDownloaded == true;
     this.size = size;
     this.id = id;
-    this.real_path = real_path;
+    this.path = path;
     this.children = children;
   }
   isDownloaded: boolean;
@@ -98,7 +182,7 @@ export class SerializedFileLib implements FileType {
       this.mimeType,
       this.isDownloaded,
       this.id,
-      this.real_path,
+      this.path,
       this.children ? new Map<string, FileLib>() : undefined,
       this.size
     );
@@ -143,7 +227,7 @@ export class SerializedFSLib {
           file.mimeType,
           file.isDownloaded,
           file.id,
-          file.real_path
+          file.path
         )
     );
     return fsLib;

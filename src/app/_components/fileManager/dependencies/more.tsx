@@ -25,7 +25,7 @@ import {
   BreadcrumbList,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-import React, { Dispatch } from "react";
+import React, { Dispatch, } from "react";
 import { open } from "@tauri-apps/plugin-shell";
 import { Action } from "../FileManager";
 import { FileType } from "./FileSystem";
@@ -49,11 +49,13 @@ export function MoreButton({
   onDownload,
   onDelete,
   onOpen,
+  addToLibrary,
 }: {
   file: FileType;
   onDownload: () => void;
   onOpen: () => void;
   onDelete: () => void;
+  addToLibrary: () => void;
 }) {
   return (
     <DropdownMenu>
@@ -86,7 +88,7 @@ export function MoreButton({
           </DropdownMenuItem>
         )}
         {isFile(file) && (
-          <DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => addToLibrary()}>
             <CopyPlusIcon className="mr-2 h-4 w-4" />
             <span>Add to library</span>
           </DropdownMenuItem>

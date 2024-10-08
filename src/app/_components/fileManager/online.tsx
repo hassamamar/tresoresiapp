@@ -20,7 +20,7 @@ export default function TresorDrive() {
   const queryClient=useQueryClient();
   const [idState, idDispatch] = useReducer(reducer, initialState);
   const { isLoading, data } = useQuery({
-    queryKey: [idState.id],
+    queryKey: [idState.id,"online"],
     staleTime: Infinity,
     queryFn: async () => {
       try {

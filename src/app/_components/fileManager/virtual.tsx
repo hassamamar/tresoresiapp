@@ -1,13 +1,13 @@
-"use client"
-import { useReducer } from "react";
+"use client";
+import { useContext, useReducer } from "react";
 
 import Image from "next/image";
-import { useQuery } from "@tanstack/react-query";
-import axios from "axios";
-import FileManager, { IdStateType, OnlineAction } from "./FileManager";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import FileManager, { IdStateType, Action } from "./FileManager";
+import { AppContext } from "@/app/_context/appContext";
+import { FileLib, FSLib } from "./dependencies/FileSystem";
 
 // Define the action type with appropriate payloads for each action
-
 
 // Define the initial state
 const initialState: IdStateType = {
@@ -16,10 +16,7 @@ const initialState: IdStateType = {
 };
 
 // Define the reducer function
-const reducer = (
-  state: IdStateType,
-  action: OnlineAction
-): IdStateType => {
+const reducer = (state: IdStateType, action: Action): IdStateType => {
   switch (action.type) {
     case "push":
       return {
@@ -40,33 +37,39 @@ const reducer = (
   }
 };
 
-export default function TresorDrive() {
+export default function Library() {
+  const context = useContext(AppContext);
+  const fsLib = context?.appState.library as FSLib;
+  const queryClient = useQueryClient();
   const [idState, idDispatch] = useReducer(reducer, initialState);
   const { isLoading, data } = useQuery({
-    queryKey: [idState.id],
+    queryKey: idState.list,
     staleTime: Infinity,
     queryFn: async () => {
       try {
-        const res = await axios.get(`http://localhost:3000/api/drive`, {
-          params: { id: idState.id },
-        });
-        console.log(res.data);
-        return res.data;
+        console.log("querry executed :");
+        console.log("list here :");
+        console.log(idState.list);
+        const files = fsLib.readFolder(idState.list.map((file) => file.name));
+        if (!files) throw Error("Folder doesn't exist");
+        files.forEach((file) => (file.isDownloaded = true));
+        console.log(files);
+        return files;
       } catch (error) {
         console.log(error);
-        return error;
+        return [];
       }
     },
   });
-
   return (
     <FileManager
       idState={idState}
       idDispatch={idDispatch}
       isSearchFilter={true}
       isToggle={true}
-      data={data}
+      data={data as FileLib[]}
       isLoading={isLoading}
+      queryClient={queryClient}
     >
       <h1
         className="text-3xl font-bold mb-7 flex gap-2 items-center selectDisable "

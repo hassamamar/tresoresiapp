@@ -1,9 +1,7 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Button } from "@/components/ui/button";
 import { Download, Check, ChevronLeft, ChevronRight } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
-  FileType,
   FileTypeIcon,
   formatFileSize,
   isFile,
@@ -17,10 +15,11 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { OnlineIdStateType, OnlineAction } from "../FileManager";
+import { IdStateType, Action } from "../FileManager";
 import { AppContext } from "@/app/_context/appContext";
 import { invoke } from "@tauri-apps/api/core";
 import { QueryClient } from "@tanstack/react-query";
+import { FileLib, FileType } from "./FileSystem";
 
 const ITEMS_PER_PAGE = 7;
 export default function FilesList({
@@ -32,20 +31,16 @@ export default function FilesList({
   queryClient,
 }: {
   mode: "squares" | "list";
-  filteredAndSortedFiles: any[];
-  setFiles: Dispatch<SetStateAction<any[]>>;
-  idDispatch: Dispatch<OnlineAction>;
-  idState: OnlineIdStateType;
+  filteredAndSortedFiles: FileType[];
+  setFiles: Dispatch<SetStateAction<FileType[]>>;
+  idDispatch: Dispatch<Action>;
+  idState: IdStateType;
   queryClient: QueryClient;
 }) {
   const context = useContext(AppContext);
   const [currentPage, setCurrentPage] = useState(1);
-  const handleDelete = async (file: {
-    id?: string;
-    name: string;
-    path: string[];
-    mimeType: string;
-  }) => {
+  const handleDelete = async (file: FileType) => {
+    if (!file.path) return;
     if (file.id) {
       setFiles((prevFiles) =>
         prevFiles.map((mapFile) =>
@@ -168,6 +163,20 @@ export default function FilesList({
                                 idState.list.map(({ name }) => name)
                               )
                             }
+                            addToLibrary={() => {
+                              context?.appState.library?.writeFile(
+                                idState.list.map((file) => file.name),
+                                new FileLib(
+                                  file.name,
+                                  file.mimeType,
+                                  file.isDownloaded,
+                                  file.id,
+                                  idState.list.map((file) => file.name),
+                                  file.children,
+                                  file.size
+                                )
+                              );
+                            }}
                             onDelete={() =>
                               handleDelete({
                                 ...file,
@@ -222,7 +231,7 @@ export default function FilesList({
                             </Tooltip>
 
                             <div className="text-xs text-gray-500 mr-3 mt-1">
-                              {formatFileSize(file.size)}
+                              {file.size ? formatFileSize(file.size) : 0}
                             </div>
                           </div>
                         </div>
@@ -242,14 +251,28 @@ export default function FilesList({
                                 idState.list.map(({ name }) => name)
                               );
                               queryClient.removeQueries({
-                                queryKey: [...file.path],
+                                queryKey: file.path ? [...file.path] : [],
                                 exact: true,
                               });
                             }}
+                            addToLibrary={() => {
+                              context?.appState.library?.writeFile(
+                                idState.list.map((file) => file.name),
+                                new FileLib(
+                                  file.name,
+                                  file.mimeType,
+                                  file.isDownloaded,
+                                  file.id,
+                                  idState.list.map((file) => file.name),
+                                  file.children,
+                                  file.size
+                                )
+                              );
+                            }}
                             onDelete={() => {
                               queryClient.removeQueries({
-                                queryKey: [...file.path],
-                                exact:true
+                                queryKey: file.path ? [...file.path] : [],
+                                exact: true,
                               });
                               handleDelete({
                                 ...file,
@@ -329,7 +352,7 @@ export default function FilesList({
                 <div className={`flex items-center gap-3 `}>
                   {!isFolder(file) && !isFolderShortcut(file) && (
                     <div className="text-xs text-gray-500 mr-3">
-                      {formatFileSize(file.size)}
+                      {file.size?formatFileSize(file.size):0}
                     </div>
                   )}
                   {isFile(file) && (
@@ -350,6 +373,20 @@ export default function FilesList({
                         idState.list.map(({ name }) => name)
                       )
                     }
+                    addToLibrary={() => {
+                      context?.appState.library?.writeFile(
+                        idState.list.map((file) => file.name),
+                        new FileLib(
+                          file.name,
+                          file.mimeType,
+                          file.isDownloaded,
+                          file.id,
+                          idState.list.map(file=>file.name),
+                          file.children,
+                          file.size
+                        )
+                      );
+                    }}
                     onDelete={() =>
                       handleDelete({
                         ...file,
