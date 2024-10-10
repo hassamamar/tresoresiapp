@@ -11,7 +11,6 @@ use std::io::Write;
 use crate::get_app_data_path;
 use crate::set_ads;
 use crate::store_file_id;
-use crate::Metadata;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ShortcutDetails {

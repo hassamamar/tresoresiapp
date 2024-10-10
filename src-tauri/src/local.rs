@@ -1,5 +1,5 @@
 use std::{
-    fs::{self, File},
+    fs,
     io,
     path::PathBuf,
 };
@@ -37,7 +37,6 @@ pub fn file_list_offline(
     folder_path_vec: Vec<String>,
     app_handle: AppHandle,
 ) -> Result<Vec<SendFileType>, String> {
-    
     let folder_path = get_offline_path(&app_handle, folder_path_vec);
     if !folder_path.exists() {
         return Err(String::from("Folder doesn't exist"));

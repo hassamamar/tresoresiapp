@@ -78,7 +78,7 @@ export function MoreButton({
         {isFile(file) && (
           <DropdownMenuItem
             onSelect={() => {
-              console.log("donwloading");
+              console.log(file.isDownloaded ? "delete" : "donwloading");
               if (file.isDownloaded) onDelete();
               else onDownload();
             }}
@@ -89,6 +89,17 @@ export function MoreButton({
               <Download className="mr-2 h-4 w-4" />
             )}
             <span>{file.isDownloaded ? "Delete" : "Download"}</span>
+          </DropdownMenuItem>
+        )}
+        {!isFile(file) && (
+          <DropdownMenuItem
+            onSelect={() => {
+              console.log("deleting folder");
+              onDelete();
+            }}
+          >
+            <CircleXIcon className="mr-2 h-4 w-4" />
+            <span>Delete</span>
           </DropdownMenuItem>
         )}
         {isFile(file) &&

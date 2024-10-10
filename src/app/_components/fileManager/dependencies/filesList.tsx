@@ -41,21 +41,14 @@ export default function FilesList({
   const [currentPage, setCurrentPage] = useState(1);
   const handleDelete = async (file: FileType) => {
     if (!file.parentPath) return;
-    if (file.id) {
-      setFiles((prevFiles) =>
-        prevFiles.map((mapFile) =>
-          mapFile.name === file.name
-            ? { ...file, isDownloaded: false }
-            : mapFile
-        )
-      );
-    } else {
-      setFiles((prevFiles) =>
-        prevFiles.filter((mapFile) => mapFile.name !== file.name)
-      );
-    }
+    setFiles((prevFiles) =>
+      prevFiles.map((mapFile) =>
+        mapFile.name === file.name ? { ...file, isDownloaded: false } : mapFile
+      )
+    );
+
     console.log(file);
-    queryClient.removeQueries({ queryKey: [...file.parentPath], exact: true });
+
     if (isFile(file)) {
       await invoke("delete_file", {
         file: {
@@ -72,18 +65,31 @@ export default function FilesList({
           .map((segment) => segment.replaceAll("/", "-WINSEP-")),
       });
     }
+    queryClient.invalidateQueries({
+      queryKey: [idState.id, "offline"],
+      exact: true,
+    });
+    queryClient.invalidateQueries({
+      queryKey: [idState.id, "online"],
+      exact: true,
+    });
   };
 
   const handleDownload = (file: FileType, path: string[], ids: string[]) => {
-    context?.appActions.download({
-      id: file.id,
-      name: file.name,
-      progress: 0,
-      path: path.map((segment) => {
-        return segment.replaceAll("/", "-WINSEP-");
-      }),
-      ids,
-    });
+    context?.appActions.download(
+      {
+        id: file.id,
+        name: file.name,
+        progress: 0,
+        path: path.map((segment) => {
+          return segment.replaceAll("/", "-WINSEP-");
+        }),
+        ids,
+      },
+      idState.id,
+      idState,
+      setFiles,queryClient
+    );
   };
   const totalPages = Math.ceil(filteredAndSortedFiles.length / ITEMS_PER_PAGE);
   const paginatedFiles = filteredAndSortedFiles.slice(
@@ -288,21 +294,9 @@ export default function FilesList({
                                 idState.list.map(({ name }) => name),
                                 idState.list.map(({ id }) => id)
                               );
-                              queryClient.removeQueries({
-                                queryKey: file.parentPath
-                                  ? [...file.parentPath]
-                                  : [],
-                                exact: true,
-                              });
                             }}
                             addToLibrary={() => addToLibrary(file)}
                             onDelete={() => {
-                              queryClient.removeQueries({
-                                queryKey: file.parentPath
-                                  ? [...file.parentPath]
-                                  : [],
-                                exact: true,
-                              });
                               handleDelete({
                                 ...file,
                                 parentPath: idState.list
