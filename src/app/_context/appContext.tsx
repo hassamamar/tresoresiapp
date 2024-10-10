@@ -70,6 +70,27 @@ const AppProvider: FC<{ children: ReactNode }> = ({ children }) => {
           return oldFiles;
         });
       }
+      for (const id of downloadFile.ids) {
+        querryClient.invalidateQueries({
+          queryKey: [id, "offline"],
+          exact: true,
+        });
+      }
+      if (idState.list.length < downloadFile.path.length) {
+        let ChildFolderName = downloadFile.path[idState.list.length];
+        let ChildFolderId = downloadFile.ids[idState.list.length];
+        setFiles((oldFiles) => {
+          if (!oldFiles.some((file) => file.id == ChildFolderId)) {
+            oldFiles.push({
+              id: ChildFolderId,
+              name: ChildFolderName,
+              mimeType: "application/vnd.google-apps.folder",
+              isDownloaded: false,
+            });
+          }
+          return oldFiles;
+        });
+      }
     },
     onDownloadsChange(fn) {
       listen("downloads", (event) => {
