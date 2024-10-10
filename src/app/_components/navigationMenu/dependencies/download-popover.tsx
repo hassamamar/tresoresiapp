@@ -19,6 +19,7 @@ import { invoke } from "@tauri-apps/api/core";
 export interface DownloadItem {
   id: string;
   name: string;
+  mimeType:string,
   progress: number;
   path: string[];
   ids: string[];

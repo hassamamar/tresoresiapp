@@ -32,7 +32,8 @@ interface AppActions {
     file: DownloadItem,
     parentId: string,
     idState: IdStateType,
-    setFiles: Dispatch<SetStateAction<FileType[]>>,querryClient:QueryClient
+    setFiles: Dispatch<SetStateAction<FileType[]>>,
+    querryClient: QueryClient
   ): void;
   onDownloadsChange: (fn: (newDownloads: DownloadItem[]) => void) => void;
 }
@@ -47,7 +48,7 @@ const AppProvider: FC<{ children: ReactNode }> = ({ children }) => {
   const [fsLib, setFsLib] = useState<FSLib | undefined>();
   const querryClient = new QueryClient();
   const appActions: AppActions = {
-    async download(downloadFile, parentId, idState, setFiles,querryClient) {
+    async download(downloadFile, parentId, idState, setFiles, querryClient) {
       await invoke("download", { downloadFile });
       querryClient.invalidateQueries({
         queryKey: [parentId, "online"],
@@ -58,13 +59,16 @@ const AppProvider: FC<{ children: ReactNode }> = ({ children }) => {
         exact: true,
       });
       if (idState.id == parentId) {
-        setFiles((oldFiles) =>
-          oldFiles.map((file) =>
-            file.id == downloadFile.id
-              ? { ...file, isDownloaded: true }
-              : file
-          )
-        );
+        setFiles((oldFiles) => {
+          if (oldFiles.some((file) => file.id == downloadFile.id))
+            oldFiles.forEach((file) =>
+              file.id == downloadFile.id
+                ? { ...file, isDownloaded: true }
+                : file
+            );
+          else oldFiles.push({ ...downloadFile, isDownloaded: true });
+          return oldFiles;
+        });
       }
     },
     onDownloadsChange(fn) {

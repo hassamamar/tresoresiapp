@@ -1,28 +1,14 @@
 "use client";
 import { open } from "@tauri-apps/plugin-shell";
-import { CloudUploadIcon, HouseIcon, LibraryBigIcon } from "lucide-react";
+import { HouseIcon, LibraryBigIcon } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ReactNode } from "react";
 import { DownloadPopover } from "./dependencies/download-popover";
-const downloads = [
-  {
-    id: "1",
-    name: "Very long file name that needs truncation.pdf",
-    percentage: 45,
-    path: "/documents/work/",
-  },
-  {
-    id: "2",
-    name: "Another long named file for download example.docx",
-    percentage: 78,
-    path: "/downloads/",
-  },
-  { id: "3", name: "Short name.txt", percentage: 100, path: "/notes/" },
-];
-export default function NavMenu() {
+import { Button } from "@/components/ui/button";
 
+export default function NavMenu() {
   return (
     <>
       <div className="relative flex flex-col justify-between items-center w-40 text-gray-700 bg-white overflow-hidden border-r pb-10">
@@ -59,11 +45,6 @@ export default function NavMenu() {
               icon={<LibraryBigIcon />}
               label="Library"
             />
-            <MenuItem
-              linkPath="/share"
-              icon={<CloudUploadIcon />}
-              label="Share"
-            />
           </div>
           <DownloadPopover />
         </div>
@@ -80,6 +61,16 @@ export default function NavMenu() {
           />
           <p className="font-bold text-sm font-sans selectDisable">CSE Club</p>
         </div>
+        <Button
+          onClick={async () =>
+            await open(
+              "https://docs.google.com/forms/d/e/1FAIpQLSfDcpyG7hsMw-DsyowZhlfbhxgeyeAZzSvrYBfYpoWLSfpzjg/viewform"
+            )
+          }
+          className="bg-[#0C0A55] hover:bg-[#0C0A55] cursor-pointer font-semibold font-sans rounded-xl px-7 mt-[-40px] mb-5 z-10"
+        >
+          Contribute
+        </Button>
         {/* Background Image */}
         <Image
           src="/background.png"

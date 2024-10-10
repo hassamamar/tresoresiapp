@@ -81,6 +81,7 @@ export default function FilesList({
         id: file.id,
         name: file.name,
         progress: 0,
+        mimeType: file.mimeType,
         path: path.map((segment) => {
           return segment.replaceAll("/", "-WINSEP-");
         }),
@@ -88,7 +89,8 @@ export default function FilesList({
       },
       idState.id,
       idState,
-      setFiles,queryClient
+      setFiles,
+      queryClient
     );
   };
   const totalPages = Math.ceil(filteredAndSortedFiles.length / ITEMS_PER_PAGE);
