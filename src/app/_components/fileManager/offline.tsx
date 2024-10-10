@@ -30,7 +30,9 @@ export default function TresorDrive() {
         console.log("list here :");
         console.log(idState.list);
         const files: FileType[] = await invoke("file_list_offline", {
-          folderPathVec: idState.list.map((file) => file.name),
+          folderPathVec: idState.list.map((file) =>
+            file.name.replaceAll("/", "-WINSEP-")
+          ),
         });
         files.forEach((file) => (file.isDownloaded = true));
         console.log(files);

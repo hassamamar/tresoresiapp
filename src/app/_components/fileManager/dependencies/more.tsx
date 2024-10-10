@@ -25,11 +25,11 @@ import {
   BreadcrumbList,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-import React, { Dispatch, } from "react";
+import React, { Dispatch } from "react";
 import { open } from "@tauri-apps/plugin-shell";
 import { Action } from "../FileManager";
 import { FileType } from "./FileSystem";
-
+import { usePathname } from "next/navigation";
 
 export function isFileType(obj: FileType): boolean {
   return (
@@ -50,13 +50,17 @@ export function MoreButton({
   onDelete,
   onOpen,
   addToLibrary,
+  changePath,
 }: {
   file: FileType;
   onDownload: () => void;
   onOpen: () => void;
   onDelete: () => void;
   addToLibrary: () => void;
+  changePath: (source: string[], destination: string[]) => void;
 }) {
+  const path = usePathname();
+  const isLibrary = path.includes("/library");
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
@@ -87,12 +91,18 @@ export function MoreButton({
             <span>{file.isDownloaded ? "Delete" : "Download"}</span>
           </DropdownMenuItem>
         )}
-        {isFile(file) && (
-          <DropdownMenuItem onSelect={() => addToLibrary()}>
-            <CopyPlusIcon className="mr-2 h-4 w-4" />
-            <span>Add to library</span>
-          </DropdownMenuItem>
-        )}
+        {isFile(file) &&
+          (isLibrary ? (
+            <DropdownMenuItem onSelect={() => addToLibrary()}>
+              <CopyPlusIcon className="mr-2 h-4 w-4" />
+              <span>Add to library</span>
+            </DropdownMenuItem>
+          ) : (
+            <DropdownMenuItem onSelect={() => changePath()}>
+              <CopyPlusIcon className="mr-2 h-4 w-4" />
+              <span>Change path</span>
+            </DropdownMenuItem>
+          ))}
 
         {file.id && (
           <DropdownMenuItem onClick={() => open(GetExternalLink(file))}>
@@ -105,7 +115,7 @@ export function MoreButton({
   );
 }
 
-export function isFolder(file:FileType) {
+export function isFolder(file: FileType) {
   return file.mimeType == "application/vnd.google-apps.folder";
 }
 export function isFolderShortcut(file: FileType) {
@@ -216,6 +226,10 @@ export function BreadcrumbFiles({
   list: { id: string; name: string }[];
   idDispatch: Dispatch<Action>;
 }) {
+  list.map((segment) => ({
+    id: segment.id,
+    name: segment.name.replaceAll("-WINSEP-", "/"),
+  }));
   return (
     <Breadcrumb>
       <BreadcrumbList className="pl-5 pb-3">
@@ -243,7 +257,7 @@ export function BreadcrumbFiles({
                   id={folder.id}
                   onClick={() =>
                     ind != arr.length - 1 &&
-                    idDispatch({ type: "goto", payload: ind +list.length- 2 })
+                    idDispatch({ type: "goto", payload: ind + list.length - 2 })
                   }
                   className="selectDisable hover:text-black cursor-pointer"
                 >

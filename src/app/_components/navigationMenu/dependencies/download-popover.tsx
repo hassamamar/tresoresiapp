@@ -21,6 +21,7 @@ export interface DownloadItem {
   name: string;
   progress: number;
   path: string[];
+  ids: string[];
 }
 
 const DownloadItem: React.FC<DownloadItem> = ({

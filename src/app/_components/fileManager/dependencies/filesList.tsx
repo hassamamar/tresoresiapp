@@ -40,7 +40,7 @@ export default function FilesList({
   const context = useContext(AppContext);
   const [currentPage, setCurrentPage] = useState(1);
   const handleDelete = async (file: FileType) => {
-    if (!file.path) return;
+    if (!file.parentPath) return;
     if (file.id) {
       setFiles((prevFiles) =>
         prevFiles.map((mapFile) =>
@@ -55,24 +55,34 @@ export default function FilesList({
       );
     }
     console.log(file);
-    queryClient.removeQueries({ queryKey: [...file.path], exact: true });
+    queryClient.removeQueries({ queryKey: [...file.parentPath], exact: true });
     if (isFile(file)) {
       await invoke("delete_file", {
-        file: { name: file.name, path: file.path },
+        file: {
+          name: file.name.replaceAll("/", "-WINSEP-"),
+          path: file.parentPath.map((segment) =>
+            segment.replaceAll("/", "-WINSEP-")
+          ),
+        },
       });
     } else {
       await invoke("delete_folder", {
-        path: file.path.concat(file.name),
+        path: file.parentPath
+          .concat(file.name.replaceAll("/", "-WINSEP-"))
+          .map((segment) => segment.replaceAll("/", "-WINSEP-")),
       });
     }
   };
 
-  const handleDownload = (file: FileType, path: string[]) => {
+  const handleDownload = (file: FileType, path: string[], ids: string[]) => {
     context?.appActions.download({
       id: file.id,
       name: file.name,
       progress: 0,
-      path,
+      path: path.map((segment) => {
+        return segment.replaceAll("/", "-WINSEP-");
+      }),
+      ids,
     });
   };
   const totalPages = Math.ceil(filteredAndSortedFiles.length / ITEMS_PER_PAGE);
@@ -80,6 +90,37 @@ export default function FilesList({
     (currentPage - 1) * ITEMS_PER_PAGE,
     currentPage * ITEMS_PER_PAGE
   );
+  const addToLibrary = (file: FileType) => {
+    context?.appState.setLibrary((oldLib) => {
+      if (!oldLib) return oldLib;
+      oldLib.writeFile(
+        idState.list.map((file) => file.name),
+        new FileLib(
+          file.name,
+          file.mimeType,
+          file.isDownloaded,
+          file.id,
+          idState.list.map((file) => file.name),
+          file.children,
+          file.size
+        )
+      );
+      invoke("save_library", {
+        newContent: JSON.stringify(oldLib.serialize()),
+      });
+      return oldLib;
+    });
+  };
+  const changePath = (source: string[], destination: string[]) => {
+    context?.appState.setLibrary((oldLib) => {
+      if (!oldLib) return oldLib;
+      oldLib.moveFile(source, destination);
+      invoke("save_library", {
+        newContent: JSON.stringify(oldLib.serialize()),
+      });
+      return oldLib;
+    });
+  };
   return (
     <>
       <div className={`border-t ${mode == "squares" ? "" : "px-4 h-[337px]"}`}>
@@ -140,10 +181,12 @@ export default function FilesList({
                             <Tooltip>
                               <TooltipTrigger className="text-black   text-base font-medium ">
                                 <span className="flex items-start truncate w-48 ">
-                                  {file.name}
+                                  {file.name.replaceAll("-WINSEP-", "/")}
                                 </span>
                               </TooltipTrigger>
-                              <TooltipContent>{file.name}</TooltipContent>
+                              <TooltipContent>
+                                {file.name.replaceAll("-WINSEP-", "/")}
+                              </TooltipContent>
                             </Tooltip>
                           </div>
                         </div>
@@ -156,31 +199,20 @@ export default function FilesList({
                             <Download className="h-4 w-4 text-gray-500 " />
                           )}
                           <MoreButton
+                            changePath={changePath}
                             file={file}
                             onDownload={() =>
                               handleDownload(
                                 file,
-                                idState.list.map(({ name }) => name)
+                                idState.list.map(({ name }) => name),
+                                idState.list.map(({ id }) => id)
                               )
                             }
-                            addToLibrary={() => {
-                              context?.appState.library?.writeFile(
-                                idState.list.map((file) => file.name),
-                                new FileLib(
-                                  file.name,
-                                  file.mimeType,
-                                  file.isDownloaded,
-                                  file.id,
-                                  idState.list.map((file) => file.name),
-                                  file.children,
-                                  file.size
-                                )
-                              );
-                            }}
+                            addToLibrary={() => addToLibrary(file)}
                             onDelete={() =>
                               handleDelete({
                                 ...file,
-                                path: idState.list
+                                parentPath: idState.list
                                   .map((file) => file.name)
                                   .concat(isFile(file) ? [] : [file.name]),
                               })
@@ -188,8 +220,10 @@ export default function FilesList({
                             onOpen={() =>
                               invoke("open_file", {
                                 file: {
-                                  name: file.name,
-                                  path: idState.list.map((file) => file.name),
+                                  name: file.name.replaceAll("/", "-WINSEP-"),
+                                  path: idState.list.map((file) =>
+                                    file.name.replaceAll("/", "-WINSEP-")
+                                  ),
                                 },
                               })
                             }
@@ -224,10 +258,12 @@ export default function FilesList({
                             <Tooltip>
                               <TooltipTrigger className="text-sm font-medium">
                                 <span className="inline-block truncate w-32  overflow-hidden text-black">
-                                  {file.name}
+                                  {file.name.replaceAll("-WINSEP-", "/")}
                                 </span>
                               </TooltipTrigger>
-                              <TooltipContent>{file.name}</TooltipContent>
+                              <TooltipContent>
+                                {file.name.replaceAll("-WINSEP-", "/")}
+                              </TooltipContent>
                             </Tooltip>
 
                             <div className="text-xs text-gray-500 mr-3 mt-1">
@@ -244,39 +280,32 @@ export default function FilesList({
                             <Download className="h-4 w-4 text-gray-500 " />
                           )}
                           <MoreButton
+                            changePath={changePath}
                             file={file}
                             onDownload={() => {
                               handleDownload(
                                 file,
-                                idState.list.map(({ name }) => name)
+                                idState.list.map(({ name }) => name),
+                                idState.list.map(({ id }) => id)
                               );
                               queryClient.removeQueries({
-                                queryKey: file.path ? [...file.path] : [],
+                                queryKey: file.parentPath
+                                  ? [...file.parentPath]
+                                  : [],
                                 exact: true,
                               });
                             }}
-                            addToLibrary={() => {
-                              context?.appState.library?.writeFile(
-                                idState.list.map((file) => file.name),
-                                new FileLib(
-                                  file.name,
-                                  file.mimeType,
-                                  file.isDownloaded,
-                                  file.id,
-                                  idState.list.map((file) => file.name),
-                                  file.children,
-                                  file.size
-                                )
-                              );
-                            }}
+                            addToLibrary={() => addToLibrary(file)}
                             onDelete={() => {
                               queryClient.removeQueries({
-                                queryKey: file.path ? [...file.path] : [],
+                                queryKey: file.parentPath
+                                  ? [...file.parentPath]
+                                  : [],
                                 exact: true,
                               });
                               handleDelete({
                                 ...file,
-                                path: idState.list
+                                parentPath: idState.list
                                   .map((file) => file.name)
                                   .concat(isFile(file) ? [] : [file.name]),
                               });
@@ -284,8 +313,10 @@ export default function FilesList({
                             onOpen={() =>
                               invoke("open_file", {
                                 file: {
-                                  name: file.name,
-                                  path: idState.list.map((file) => file.name),
+                                  name: file.name.replaceAll("/", "-WINSEP-"),
+                                  path: idState.list.map((file) =>
+                                    file.name.replaceAll("/", "-WINSEP-")
+                                  ),
                                 },
                               })
                             }
@@ -339,11 +370,13 @@ export default function FilesList({
                     <Tooltip>
                       <TooltipTrigger className="text-sm font-medium">
                         <span className="inline-block truncate w-96  overflow-hidden text-black text-left">
-                          {file.name}
+                          {file.name.replaceAll("-WINSEP-", "/")}
                         </span>
                       </TooltipTrigger>
 
-                      <TooltipContent>{file.name}</TooltipContent>
+                      <TooltipContent>
+                        {file.name.replaceAll("-WINSEP-", "/")}
+                      </TooltipContent>
                     </Tooltip>
                   </div>
                 </div>
@@ -352,7 +385,7 @@ export default function FilesList({
                 <div className={`flex items-center gap-3 `}>
                   {!isFolder(file) && !isFolderShortcut(file) && (
                     <div className="text-xs text-gray-500 mr-3">
-                      {file.size?formatFileSize(file.size):0}
+                      {file.size ? formatFileSize(file.size) : 0}
                     </div>
                   )}
                   {isFile(file) && (
@@ -366,31 +399,20 @@ export default function FilesList({
                   )}
 
                   <MoreButton
+                    changePath={changePath}
                     file={file}
                     onDownload={() =>
                       handleDownload(
                         file,
-                        idState.list.map(({ name }) => name)
+                        idState.list.map(({ name }) => name),
+                        idState.list.map(({ id }) => id)
                       )
                     }
-                    addToLibrary={() => {
-                      context?.appState.library?.writeFile(
-                        idState.list.map((file) => file.name),
-                        new FileLib(
-                          file.name,
-                          file.mimeType,
-                          file.isDownloaded,
-                          file.id,
-                          idState.list.map(file=>file.name),
-                          file.children,
-                          file.size
-                        )
-                      );
-                    }}
+                    addToLibrary={() => addToLibrary(file)}
                     onDelete={() =>
                       handleDelete({
                         ...file,
-                        path: idState.list
+                        parentPath: idState.list
                           .map((file) => file.name)
                           .concat(isFile(file) ? [] : [file.name]),
                       })
@@ -398,8 +420,10 @@ export default function FilesList({
                     onOpen={() =>
                       invoke("open_file", {
                         file: {
-                          name: file.name,
-                          path: idState.list.map((file) => file.name),
+                          name: file.name.replaceAll("/", "-WINSEP-"),
+                          path: idState.list.map((file) =>
+                            file.name.replaceAll("/", "-WINSEP-")
+                          ),
                         },
                       })
                     }

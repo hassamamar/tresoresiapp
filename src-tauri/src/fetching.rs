@@ -9,6 +9,7 @@ use std::fs::File;
 use std::io::Write;
 
 use crate::get_app_data_path;
+use crate::set_ads;
 use crate::store_file_id;
 use crate::Metadata;
 
@@ -69,6 +70,7 @@ pub struct DownloadItem {
     pub name: String,
     progress: u8, // Download progress percentage
     pub path: Vec<String>,
+    pub ids: Vec<String>
 }
 #[tauri::command]
 pub async fn download(
@@ -82,8 +84,8 @@ pub async fn download(
         .emit("downloads", downloads.clone())
         .map_err(|_| "Failed to add download to state".to_string())?;
     println!("downloading : {:?}", download_file);
-    let api_key: String = std::env::var("GOOGLE_API_KEY")
-        .unwrap_or(String::from("api key not set"));
+    let api_key: String =
+        std::env::var("GOOGLE_API_KEY").unwrap_or(String::from("api key not set"));
     let url = format!(
         "https://www.googleapis.com/drive/v3/files/{}?alt=media&key={}",
         download_file.id, api_key
@@ -113,11 +115,11 @@ pub async fn download(
     let file_parent_pathbuf: PathBuf = download_file.path.iter().collect::<PathBuf>();
     let file_parent_path = app_dir.join(file_parent_pathbuf);
     if !file_parent_path.exists() {
-        let _ = fs::create_dir_all(file_parent_path.clone());
+        create_folders(&app_dir, &download_file.path, &download_file.ids).unwrap();
     }
     let file_path = file_parent_path.join(download_file.name); // Specify your file name
     let mut file = File::create(&file_path).map_err(|_| "Failed to create file".to_string())?;
-    store_file_id(file_path.clone(), &Metadata{id:download_file.id.clone()}).unwrap();
+    
     // Read the response in chunks
     while let Some(chunk) = response
         .chunk()
@@ -134,6 +136,7 @@ pub async fn download(
             downloads.retain_mut(|download| {
                 if download_file.id == download.id {
                     if progress == 100 {
+                        store_file_id(file_path.clone(), download_file.id.clone()).unwrap();
                         return false;
                     } else {
                         download.progress = progress;
@@ -158,4 +161,29 @@ pub async fn loaded(app_handle: AppHandle) {
 
     let content = state.lock().await;
     app_handle.emit("downloads", content.clone()).unwrap();
+}
+
+
+fn create_folders(base_path: &PathBuf, subfolders: &Vec<String>,folder_ids: &Vec<String>) -> std::io::Result<()> {
+
+    // Ensure base directory exists
+    if !base_path.exists() {
+        fs::create_dir(&base_path)?;
+    }
+    let mut folder_path=base_path.clone();
+
+    // Loop through the subfolder names and create each folder
+   for (index, subfolder) in subfolders.iter().enumerate() {
+        folder_path = folder_path.join(subfolder);
+        
+        // Create the folder if it doesn't exist
+        if !folder_path.exists() {
+            fs::create_dir(&folder_path)?;
+            println!("Created folder: {:?}", folder_path);
+        } else {
+            println!("Folder already exists: {:?}", folder_path);
+        }
+        set_ads(folder_path.to_str().unwrap(), "id", &folder_ids[index]).unwrap();
+    }
+    Ok(())
 }

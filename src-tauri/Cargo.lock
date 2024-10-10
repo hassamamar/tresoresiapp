@@ -105,7 +105,6 @@ dependencies = [
  "tauri-build",
  "tauri-plugin-log",
  "tauri-plugin-shell",
- "winapi",
  "window-shadows",
  "xattr",
 ]

@@ -70,6 +70,7 @@ export default function Library() {
       data={data as FileLib[]}
       isLoading={isLoading}
       queryClient={queryClient}
+      
     >
       <h1
         className="text-3xl font-bold mb-7 flex gap-2 items-center selectDisable "

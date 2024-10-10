@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use tauri::AppHandle;
 use tauri_plugin_shell::ShellExt;
 
-use crate::{create_ads, get_app_data_path, read_ads};
+use crate::{get_ads, get_app_data_path, set_ads};
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ReceiveFileType {
     name: String,
@@ -17,7 +17,7 @@ pub struct ReceiveFileType {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SendFileType {
-    id:String,
+    id: String,
     name: String,
     size: usize,
     mimeType: String,
@@ -37,6 +37,7 @@ pub fn file_list_offline(
     folder_path_vec: Vec<String>,
     app_handle: AppHandle,
 ) -> Result<Vec<SendFileType>, String> {
+    
     let folder_path = get_offline_path(&app_handle, folder_path_vec);
     if !folder_path.exists() {
         return Err(String::from("Folder doesn't exist"));
@@ -44,6 +45,7 @@ pub fn file_list_offline(
     if !folder_path.is_dir() {
         return Err(String::from("Provided path for a folder is not a folder"));
     }
+    println!("{folder_path:?}");
     let folder_reader = fs::read_dir(folder_path);
     let mut entries = Vec::new();
     if let Ok(folder_reader) = folder_reader {
@@ -61,7 +63,7 @@ pub fn file_list_offline(
                 let size = entry.metadata().unwrap().len() as usize;
                 // Push into Vec<File>
                 entries.push(SendFileType {
-                    id:read_file_id(path).unwrap(),
+                    id: read_file_id(path).unwrap(),
                     name,
                     mimeType,
                     size,
@@ -98,13 +100,13 @@ pub fn delete_folder(path: Vec<String>, app_handle: AppHandle) -> Result<(), Str
 pub struct Metadata {
     pub id: String,
 }
-pub fn store_file_id(file_path: PathBuf, metadata: &Metadata) -> io::Result<()> {
+pub fn store_file_id(file_path: PathBuf, id: String) -> io::Result<()> {
     let path = file_path.to_str().unwrap();
-
+    let metadata = Metadata { id };
     #[cfg(target_os = "windows")]
     {
         // Use alternate data streams on Windows
-        create_ads(path, "id", &metadata.id)?;
+        set_ads(path, "id", &metadata.id)?;
     }
 
     #[cfg(any(target_os = "linux", target_os = "macos"))]
@@ -119,21 +121,21 @@ pub fn store_file_id(file_path: PathBuf, metadata: &Metadata) -> io::Result<()> 
     Ok(())
 }
 
-
-fn read_file_id(file_path: PathBuf) -> Result<String,()> {
+fn read_file_id(file_path: PathBuf) -> Result<String, ()> {
     let path = file_path.to_str().unwrap();
-    let id:String;
+    let id: String;
     #[cfg(target_os = "windows")]
     {
         // Use alternate data streams on Windows
-        id=read_ads(path, "id").unwrap();
+        id = get_ads(path, "id").unwrap();
     }
 
     #[cfg(any(target_os = "linux", target_os = "macos"))]
     {
         use xattr::get;
 
-        id =get(path, "user.metadata").unwrap().to_owned();
+        let metadata = get(path, "user.metadata").unwrap().to_owned();
+        id = serde_json::from_str::<Metadata>(metadata).unwrap().id;
     }
 
     Ok(id)

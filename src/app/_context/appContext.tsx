@@ -16,10 +16,14 @@ import NavMenu from "../_components/navigationMenu/main";
 import { DownloadItem } from "../_components/navigationMenu/dependencies/download-popover";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import { FSLib, SerializedFSLib } from "../_components/fileManager/dependencies/FileSystem";
+import {
+  FSLib,
+  SerializedFSLib,
+} from "../_components/fileManager/dependencies/FileSystem";
 interface AppState {
   loaded: { value: boolean; set: Dispatch<SetStateAction<boolean>> };
-  library:FSLib|undefined
+  library: FSLib | undefined;
+  setLibrary: Dispatch<SetStateAction<FSLib|undefined>>;
 }
 interface AppActions {
   download(file: DownloadItem): void;
@@ -33,7 +37,7 @@ const AppContext = createContext<AppContextProps | undefined>(undefined);
 
 const AppProvider: FC<{ children: ReactNode }> = ({ children }) => {
   const [loaded, setLoaded] = useState(false);
-  const [fsLib,setFsLib]=useState<FSLib|undefined>();
+  const [fsLib, setFsLib] = useState<FSLib | undefined>();
   const querryClient = new QueryClient();
   const appActions: AppActions = {
     download(downloadFile) {
@@ -48,19 +52,24 @@ const AppProvider: FC<{ children: ReactNode }> = ({ children }) => {
   };
   const appState: AppState = {
     loaded: { value: loaded, set: setLoaded },
-    library:fsLib
+    library: fsLib,
+    setLibrary: setFsLib,
   };
-  useEffect(()=>{
-      async function get_library() {
-        if (fsLib) return;
-        const library_parsed:SerializedFSLib=JSON.parse(await invoke("get_library")); // set the type for code completion
-        const library=(new SerializedFSLib(library_parsed.files,library_parsed.last_visited)).parse()
-        setFsLib(library)
-        console.log(fsLib);
-      }
-      get_library()
-      
-  },[setFsLib,fsLib])
+  useEffect(() => {
+    async function get_library() {
+      if (fsLib) return;
+      const library_parsed: SerializedFSLib = JSON.parse(
+        await invoke("get_library")
+      ); // set the type for code completion
+      const library = new SerializedFSLib(
+        library_parsed.files,
+        library_parsed.last_visited
+      ).parse();
+      setFsLib(library);
+      console.log(fsLib);
+    }
+    get_library();
+  }, [setFsLib, fsLib]);
   return (
     <QueryClientProvider client={querryClient}>
       <TooltipProvider>
