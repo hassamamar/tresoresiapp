@@ -1,4 +1,4 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+This is a File managed aimed to simplify organizing files and download them from tresor directly from inside the app
 
 ## Getting Started
 
